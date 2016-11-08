@@ -1,0 +1,42 @@
+#Compiler definitions
+CC=gcc
+
+#C flag definitions
+CFLAGS 	  = -O3 -Wfatal-errors -std=gnu99 -I./ -I/usr/include/ -I/usr/local/include/libusb-1.0
+LDFLAGS		= -L./ -L/usr/local/lib -L/usr/lib -lusb-1.0 -lpthread -lrt -lm #-lX11 -lglut -lGL -lGLU
+# makefile changes necessary to generate .so file
+
+ifeq "$(SND)"	"1"
+	CFLAGS			+= -DSND
+endif
+ifeq "$(REC)"	"1"
+	CFLAGS			+= -DREC
+endif
+
+#Library and executable names
+lgdst_rx: lgdst_rx.c
+	${CC} -shared -o lib$@.so.1.0 $(CFLAGS) -DREC -fPIC $@.c $(LDFLAGS)
+	/bin/rm -f lib$@.so
+	/bin/ln -s lib$@.so.1.0 lib$@.so
+
+SRC_ACCESS_C= fpga_access_c.c timer.c
+access_ctl_rx:	${SRC_ACCESS_C}
+	${CC} -shared -o lib$@.so.1.0 $(CFLAGS) -DLIB -fPIC ${SRC_ACCESS_C} $(LDFLAGS)
+	/bin/rm -f lib$@.so
+	/bin/ln -s lib$@.so.1.0 lib$@.so
+
+SRC_ACCESS_V= fpga_access_v.c timer.c
+access_vid_rx:	${SRC_ACCESS_V}
+	${CC} -shared -o lib$@.so.1.0 $(CFLAGS) -DLIB -fPIC ${SRC_ACCESS_V} $(LDFLAGS)
+	/bin/rm -f lib$@.so
+	/bin/ln -s lib$@.so.1.0 lib$@.so
+
+demo_rx: demo_rx.c timer.c
+	${CC} -o $@ $(CFLAGS) $@.c timer.c  $(LDFLAGS) -llgdst_rx -laccess_ctl_rx -laccess_vid_rx
+
+clean:
+	/bin/rm -f *lgdst_rx.so*
+	/bin/rm -f *access_*rx.so*
+	/bin/rm -f demo_rx
+	/bin/rm -f *.o
+
