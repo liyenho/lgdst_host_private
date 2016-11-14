@@ -1602,7 +1602,7 @@ upgrade_firmware:
      if (system_upgrade && !upgrade_from_lgdst) {
 			upgrade_from_lgdst = 1;
      	 }
-		if (0>stream_block()) continue;
+		if (0>stream_block() && (1!=upgrade_from_lgdst)) continue;
   #ifdef SRC_FRM_ENET
 		sz = UDP_PACKET_MAX;
   #else
