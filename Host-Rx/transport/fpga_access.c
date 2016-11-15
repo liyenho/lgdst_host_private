@@ -22,7 +22,7 @@
 #define true													1
 #define false													0
 //#define print_usage                    puts("lgdst 0 tx/rx [Vn/Vf]/[Vc]/Va/[Uc]/[Uf]/ns/s/wbs/ws/wb/w/rb/r/pair-id/[retune]/[recv]/[sig]/[locked]/Cst/MDst/Cch/[rfch]/[atten]/temp/ctune ctrl-ch/fpath/adr [chidx] [atten] [bsz] [val0,val1,...], all numbers are in hex");
-#define print_usage                    puts("lgdst 0 rx [Vc]/Va/[Uc]/ns/s/wbs/ws/wb/w/rb/r/pair-id/pair-locked/loc-gps/[vscan]/[retune]/[recv]/[sig]/[locked]/Cst/MDst/[rfch]/temp/ctune/calib/calib-qry/hopless fpath/adr [chidx] [bsz] [val0,val1,...], all numbers are in hex");
+#define print_usage                    puts("lgdst 0 rx bm/[Vc]/Va/[Uc]/ns/s/wbs/ws/wb/w/rb/r/pair-id/pair-locked/loc-gps/[vscan]/[retune]/[recv]/[sig]/[locked]/Cst/MDst/[rfch]/temp/ctune/calib/calib-qry/hopless fpath/adr [chidx] [bsz] [val0,val1,...], all numbers are in hex");
 #define RAED_SETUP	\
 							shmLgdst_proc->type = ACS; \
 							shmLgdst_proc->tag.wDir = CTRL_OUT; \
@@ -50,7 +50,7 @@ static void at_exit(int status) {
 
 static void perror_exit(char *message, int status)
 {
-  char fail[80], cs[8];
+  char fail[160], cs[8];
   sprintf(cs, ", %d",status);
   strncpy(fail, message, sizeof(fail));
     strcat(fail, cs);
@@ -336,6 +336,7 @@ static void read_video_short_rx(dev_access *acs) {
 	        strcasecmp(argv[3],"retune") &&
 	        strcasecmp(argv[3],"Uc") /*cpld*/&&
 	        strcasecmp(argv[3],"Uf") /*fpga*/&&
+	        strcasecmp(argv[3],"bm") /*atm boot mode*/&&
 	        strcasecmp(argv[3],"Ua") /*atmel*/&&
 	        strcasecmp(argv[3],"Vn") /*nois*/&&
 	        strcasecmp(argv[3],"Vf") /*fpga*/&&
@@ -487,9 +488,9 @@ static void read_video_short_rx(dev_access *acs) {
 				uint8_t *ch_param = NULL;
 				int ch_sel = htoi(argv[4]);
 				if (5 != argc) {
-					perror_exit("invalid command line parameters given, lgdst 0 rx Cch ctrl-ch#",-5);
+					perror_exit("invalid command line parameters, lgdst 0 rx Cch ctrl-ch#",-5);
 				} else if (0>ch_sel || sizeof(chtbl_ctrl_rdo)/sizeof(ch_param)<= 2*ch_sel) {
-						perror_exit("invalid channel # given, beyond available ch or negative",-6);
+						perror_exit("invalid channel #, beyond available ch or negative",-6);
 					}
 				ctrl_chsel_func(ch_sel) ;
 				goto _exit0;
@@ -615,9 +616,26 @@ static void read_video_short_rx(dev_access *acs) {
 				shmLgdst_proc->tag.wIndex = RADIO_PAIR_LOCKED_IDX;
 				goto _read;
 			}
+			else if (!strcasecmp(argv[3],"bm")) {
+				if (5 != argc) {
+					perror_exit("lgdst 0 rx bm 1/0 (1:to main, 0:upgrade)",-7);
+				}
+				uint8_t mode = atoi(argv[4]);
+				if (1!=mode && 0!=mode) {
+					perror_exit("lgdst 0 rx bm 1/0 (1:to main, 0:upgrade)",-7);
+				}
+				shmLgdst_proc->type = CMD1;
+				shmLgdst_proc->len = sizeof(mode);
+				shmLgdst_proc->tag.wDir = CTRL_OUT;
+				shmLgdst_proc->tag.wValue = USB_BOOT_APP_VAL;
+				shmLgdst_proc->tag.wIndex = USB_HOST_MSG_IDX;
+				char *pc = (char*)shmLgdst_proc->access.hdr.data;
+					*pc = mode;
+					goto _read;
+			}
 			else if (!strcasecmp(argv[3],"Ua")) {
 				if (5 != argc) {
-					perror_exit("invalid command line parameters given, lgdst 0 tx/rx Ua bin-file-path",-3);
+					perror_exit("invalid command line parameters, lgdst 0 rx Ua bin-file-path",-3);
 				}
 				shmLgdst_proc->type = CMD1;
 				shmLgdst_proc->len = ((HOST_BUFFER_SIZE*2)<(strlen(argv[4])+1))?(HOST_BUFFER_SIZE*2):(strlen(argv[4])+1);
@@ -632,7 +650,7 @@ static void read_video_short_rx(dev_access *acs) {
 			}
 			else if (true/*tx*/==work_mode && !strcasecmp(argv[3],"Uf")) {
 				if (5 != argc) {
-					perror_exit("invalid command line parameters given, lgdst 0 tx Uf rbf-file-path",-2);
+					perror_exit("invalid command line parameters, lgdst 0 tx Uf rbf-file-path",-2);
 				}
 				shmLgdst_proc->type = CMD1;
 				shmLgdst_proc->len = ((HOST_BUFFER_SIZE*2)<(strlen(argv[4])+1))?(HOST_BUFFER_SIZE*2):(strlen(argv[4])+1);
@@ -659,7 +677,7 @@ static void read_video_short_rx(dev_access *acs) {
 			}
 			else if (false/*rx*/==work_mode && !strcasecmp(argv[3],"Uc")) {
 				if (5 != argc) {
-					perror_exit("invalid command line parameters given, lgdst 0 rx Uc cpld-file-path",-4);
+					perror_exit("invalid command line parameters, lgdst 0 rx Uc cpld-file-path",-4);
 				}
 				shmLgdst_proc->type = CMD1;
 				shmLgdst_proc->len = ((HOST_BUFFER_SIZE*2)<(strlen(argv[4])+1))?(HOST_BUFFER_SIZE*2):(strlen(argv[4])+1);

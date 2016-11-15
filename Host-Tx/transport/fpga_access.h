@@ -84,6 +84,7 @@ enum access_mode {
 };
 
 #define USB_ATMEL_VER_VAL								0x20
+#define USB_BOOT_APP_VAL								0xa4
 #define USB_CPLD_UPGRADE_VAL				0x21  // cpld upgrade cmd
 #define USB_FPGA_UPGRADE_VAL				0x22  // fpga upgrade cmd
 #define USB_ATMEL_UPGRADE_VAL			0x23	// atmel upgrade cmd
@@ -147,6 +148,7 @@ typedef struct  {
   #define USB_HOST_MSG_IDX						0x1	// data instead comm interface
   #define USB_HOST_MSG_LEN						sizeof(dev_access)
 
+#define DBG_BOOTSTRAP_BYPASS
 #define DBG_CTRL_PAIRING
 #ifdef DBG_CTRL_PAIRING
 // !Si446x RF Channel definitions in 25.5 mhz range divided into 14 bands of 3.43 mhz wide,
