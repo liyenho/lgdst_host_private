@@ -630,8 +630,7 @@ static void ctrl_chsel_func(int entry) {
 		    	  int32_t sect = htoi(argv[4]);
 		    	  if (0>sect || 3<sect) {
 			    		puts("invalid section, 0: disable, 1: low, 2: mid, 3: high");
-			     		goto _exit;
-			     	}
+			     	goto _exit; }
 					shmLgdst_proc->type = CMD1;
 					shmLgdst_proc->len = sizeof(sect);
 					shmLgdst_proc->tag.wDir = CTRL_OUT;

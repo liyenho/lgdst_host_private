@@ -105,6 +105,7 @@ enum access_mode {
 #define DVBT  0
 #define DVBT2  1
  #define MODE DVBT // start with dvbt first, liyenho
+ //#define MODE DVBT2 // now try dvbt2 out, liyenho
 
 #define USB_SYSTEM_RESTART_VAL				0xa5
 #define FW_UPGRADE_HDR_LEN					(12)
@@ -167,7 +168,7 @@ enum access_mode {
  #elif (DVBT==MODE)
   #define SMS_FW_FNAME							"SMS4470_A2_DVBT_MRC_Firmware_(2.0.0.47).bin"
  #endif
-  //#define SMS_DATA_FNAME					"SMS4470_A2_DVBT_MRC_Firmware_(2.0.0.30).h"
+  //#define SMS_DATA_FNAME					"SMS4470_A2_DVBT_MRC_Firmware_(2.0.0.30).bin"
   #define SMS_DATA_FNAME					"SMS4470_A2_DVBT_MRC_Firmware_(2.0.0.47).bin"
   #define USB_SMS_FW_VAL						0x6
   #define SMS_FW_HDR_LEN					(12+4)
