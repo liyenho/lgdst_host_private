@@ -39,11 +39,11 @@
 		  		}
 		  		if (!strcmp(argv[0], "lgdstv")) {
 			  		strcpy(argv[0], "lgdst");
-		  			lgdst_access_tx_vid(argc, argv, NULL);
+		  			lgdst_access_tx_vid(argc-1, argv, NULL);
 	  			}
 		  		else if (!strcmp(argv[0], "lgdstc")) {
 			  		strcpy(argv[0], "lgdst");
-		  			lgdst_access_tx_ctl(argc, argv, NULL);
+		  			lgdst_access_tx_ctl(argc-1, argv, NULL);
 	  			}
 		  		else // invalid lgdst cmd
 		  			puts("invalid lgdst command, only lgdstv or lgdstc");

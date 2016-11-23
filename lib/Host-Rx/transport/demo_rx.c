@@ -48,11 +48,11 @@
 		  		}
 		  		if (!strcmp(argv[0], "lgdstv")) {
 			  		strcpy(argv[0], "lgdst");
-		  			lgdst_access_rx_vid(argc, argv, NULL);
+		  			lgdst_access_rx_vid(argc-1, argv, NULL);
 	  			}
 		  		else if (!strcmp(argv[0], "lgdstc")) {
 			  		strcpy(argv[0], "lgdst");
-		  			lgdst_access_rx_ctl(argc, argv, NULL);
+		  			lgdst_access_rx_ctl(argc-1, argv, NULL);
 	  			}
 		  		else // invalid lgdst cmd
 		  			puts("invalid lgdst command, only lgdstv or lgdstc");
@@ -147,8 +147,8 @@ void send_pair_id_cmd(void)
 {
 int argctmp = 14;
 char *sztmp[] = { "lgdst","0","rx","pair-id","00","00","00","00","00","00","00","00","00","01"
-};	
-				
+};
+
 	lgdst_access_rx_ctl(argctmp, sztmp, NULL);
 }
 
@@ -195,11 +195,11 @@ int main(int argc, char **argv) {
 			perror("lgdst thread creation error");
 			goto end;
 		}
-    
+
     //user lgdst commands here
 		sleep(5);
 		send_pair_id_cmd();
-   
+
 		struct timeval tstart,tend,tdelta;
 		const struct timeval loop= {600, 0}; // 10 sec run time
 		get_time(&tstart);
