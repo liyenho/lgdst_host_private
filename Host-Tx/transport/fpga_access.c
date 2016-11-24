@@ -24,7 +24,7 @@
 #define false													0
 //#define print_usage                    puts("lgdst 0 tx/rx [Vn/Vf]/[Vc]/Va/[Uc]/[Uf]/ns/s/wbs/ws/wb/w/rb/r/pair-id/[locked]/Cst/MDst/Cch/[rfch]/[atten]/temp/ctune ctrl-ch/fpath/adr [chidx] [atten] [bsz] [val0,val1,...], all numbers are in hex");
 #ifdef DBG_BOOTSTRAP_BYPASS
-  #define print_usage                    puts("lgdst 0 tx bm/[Vn/Vf]/Va/[Uf]/ns/s/wbs/ws/wb/w/rb/r/pair-id/pair-locked/loc-gps/ant-qry/droneyaw/camyaw/[locked]/Cst/MDst/[rfch]/[atten]/temp/ctune/calib/calib-qry/hopless fpath/adr [chidx] [atten] [bsz] [val0,val1,...], all numbers are in hex");
+  #define print_usage                    puts("lgdst 0 tx bm/[Vn/Vf]/Va/[Uf/0]/ns/s/wbs/ws/wb/w/rb/r/pair-id/pair-locked/loc-gps/ant-qry/droneyaw/camyaw/[locked]/Cst/MDst/[rfch]/[atten]/temp/ctune/calib/calib-qry/hopless fpath/adr [chidx] [atten] [bsz] [val0,val1,...], all numbers are in hex");
 #else
   #define print_usage                    puts("lgdst 0 tx [Vn/Vf]/Va/[Uf]/ns/s/wbs/ws/wb/w/rb/r/pair-id/pair-locked/loc-gps/ant-qry/droneyaw/camyaw/[locked]/Cst/MDst/[rfch]/[atten]/temp/ctune/calib/calib-qry/hopless fpath/adr [chidx] [atten] [bsz] [val0,val1,...], all numbers are in hex");
 #endif
@@ -263,6 +263,7 @@ static void ctrl_chsel_func(int entry) {
 	        strcasecmp(argv[3],"retune") &&
 	        strcasecmp(argv[3],"Uc") /*cpld*/&&
 	        strcasecmp(argv[3],"Uf") /*fpga*/&&
+	        strcasecmp(argv[3],"Uf0") /*fpga app*/&&
 #ifdef DBG_BOOTSTRAP_BYPASS
 	        strcasecmp(argv[3],"bm") /*atm boot mode*/&&
 #endif
@@ -611,6 +612,11 @@ static void ctrl_chsel_func(int entry) {
 					shmLgdst_proc->type = CMD0;
 					shmLgdst_proc->tag.wValue = RADIO_COMM_VAL;
 					shmLgdst_proc->tag.wIndex = RADIO_CAL_IDX;
+				}
+				else if (true/*tx*/==work_mode && !strcasecmp(argv[3],"Uf0")) {
+						shmLgdst_proc->type = CMD0;
+						shmLgdst_proc->tag.wValue = USB_FPGA_NEW_VAL;
+						shmLgdst_proc->tag.wIndex = USB_HOST_MSG_IDX;
 				}
 				else if (!strcasecmp(argv[3],"Va")) {
 					shmLgdst_proc->type = CMD1;

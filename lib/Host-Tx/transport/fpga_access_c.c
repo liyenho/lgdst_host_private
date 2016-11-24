@@ -23,9 +23,9 @@
 #define true													1
 #define false													0
 #ifdef DBG_BOOTSTRAP_BYPASS
-  #define print_usage                    puts("lgdst 0 tx bm/[Vn/Vf]/Va/[Uf]/ns/s/wbs/ws/wb/w/rb/r/pair-id/pair-locked/loc-gps/ant-qry/droneyaw/camyaw/Cst/MDst/temp/ctune/calib/calib-qry/hopless fpath/adr [bsz] [val0,val1,...], all numbers are in hex");
+  #define print_usage                    puts("lgdst 0 tx bm/[Vn/Vf]/Va/[Uf/0]/ns/s/wbs/ws/wb/w/rb/r/pair-id/pair-locked/loc-gps/ant-qry/droneyaw/camyaw/Cst/MDst/temp/ctune/calib/calib-qry/hopless fpath/adr [bsz] [val0,val1,...], all numbers are in hex");
 #else
-  #define print_usage                    puts("lgdst 0 tx [Vn/Vf]/Va/[Uf]/ns/s/wbs/ws/wb/w/rb/r/pair-id/pair-locked/loc-gps/ant-qry/droneyaw/camyaw/Cst/MDst/temp/ctune/calib/calib-qry/hopless fpath/adr [bsz] [val0,val1,...], all numbers are in hex");
+  #define print_usage                    puts("lgdst 0 tx [Vn/Vf]/Va/[Uf/0]/ns/s/wbs/ws/wb/w/rb/r/pair-id/pair-locked/loc-gps/ant-qry/droneyaw/camyaw/Cst/MDst/temp/ctune/calib/calib-qry/hopless fpath/adr [bsz] [val0,val1,...], all numbers are in hex");
 #endif
 #define RAED_SETUP	\
 							shmLgdst_proc->type = ACS; \
@@ -192,6 +192,7 @@ static void ctrl_chsel_func(int entry) {
 				strcasecmp(argv[3],"ns") && strcasecmp(argv[3],"s") &&
 	        strcasecmp(argv[3],"Uc") /*cpld*/&&
 	        strcasecmp(argv[3],"Uf") /*fpga*/&&
+	        strcasecmp(argv[3],"Uf0") /*fpga app*/&&
 #ifdef DBG_BOOTSTRAP_BYPASS
 	        strcasecmp(argv[3],"bm") /*atm boot mode*/&&
 #endif
@@ -429,6 +430,11 @@ static void ctrl_chsel_func(int entry) {
 					shmLgdst_proc->type = CMD0;
 					shmLgdst_proc->tag.wValue = RADIO_COMM_VAL;
 					shmLgdst_proc->tag.wIndex = RADIO_CAL_IDX;
+				}
+				else if (true/*tx*/==work_mode && !strcasecmp(argv[3],"Uf0")) {
+						shmLgdst_proc->type = CMD0;
+						shmLgdst_proc->tag.wValue = USB_FPGA_NEW_VAL;
+						shmLgdst_proc->tag.wIndex = USB_HOST_MSG_IDX;
 				}
 				else if (!strcasecmp(argv[3],"Va")) {
 					shmLgdst_proc->type = CMD1;
