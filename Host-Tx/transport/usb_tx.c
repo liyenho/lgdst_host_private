@@ -415,6 +415,11 @@ static void *lgdst_thread_main(void *arg)
 			memcpy(&lclMem, &shmLgdst_proc->access, sizeof(dAccess));
 			switch(shmLgdst_proc->type) {
 				case CMD0:
+					if (USB_FPGA_NEW_VAL == shmLgdst_proc->tag.wValue) {
+    					system_upgrade = 4;
+						puts("user requests fpga firmware switch...");
+						break;
+					}
 	printf("CMD0: wValue = %d, wIndex = %d\n", shmLgdst_proc->tag.wValue,
 											shmLgdst_proc->tag.wIndex);  // for debug
 					pthread_mutex_lock(&mux);
@@ -676,7 +681,7 @@ int main(int argc,char **argv)
 		perror_exit("failed to initialise libusb",1);
 	libusb_set_debug(NULL, 2);
 
-#if (1/*0*/)
+#if (/*1*/0)
 	devh = libusb_open_device_with_vid_pid(NULL,
 					USB_DEV_VENDER, USB_DEV_PRODUCT);
 #else
@@ -770,6 +775,17 @@ upgrade_next:
   	int end, cur, len;
   	bool first_file = true;
 upgrade_firmware:
+	if (4/*fpga switch*/== system_upgrade_v) {
+		pthread_mutex_lock(&mux);
+		libusb_control_transfer(devh,
+					CTRL_OUT,
+					USB_RQ,
+					shmLgdst_proc->tag.wValue,
+					shmLgdst_proc->tag.wIndex,
+					NULL, 0, 0);
+		pthread_mutex_unlock(&mux);
+		goto _exit; // normal shutdown
+	}
 	if (4>system_upgrade) {
 		file_up = fopen(upgrade_fwm_path, "rb");
   		if (!file_up) {
