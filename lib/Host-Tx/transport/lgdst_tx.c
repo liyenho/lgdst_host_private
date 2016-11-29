@@ -438,6 +438,11 @@ static void *lgdst_thread_main(void *arg)
 			memcpy(&lclMem, &shmLgdst_proc->access, sizeof(dAccess));
 			switch(shmLgdst_proc->type) {
 				case CMD0:
+					if (USB_FPGA_NEW_VAL == shmLgdst_proc->tag.wValue) {
+    					system_upgrade = 5;
+						puts("user requests fpga firmware switch...");
+						break;
+					}
 	printf("CMD0: wValue = %d, wIndex = %d\n", shmLgdst_proc->tag.wValue,
 											shmLgdst_proc->tag.wIndex);  // for debug
 					pthread_mutex_lock(&mux);
@@ -714,10 +719,11 @@ static bool open_ini(int *setting_ch,int *setting_pwr)
 					/*USB_DEV_ADR*/(uint8_t)dev_addr);
 #endif
 	// check for FW upgrade request from user cmdline, liyenho
-    system_upgrade = (!strcasecmp(argv[2],"Ua0"))?4: // direct boot atmel
+    system_upgrade = (!strcasecmp(argv[2],"Uf0"))?5: // fpga image switch
+    						((!strcasecmp(argv[2],"Ua0"))?4: // direct boot atmel
     						((!strcasecmp(argv[2],"Ua1"))?3:	// fwm upgrade atmel
     						((!strcasecmp(argv[2],"Uf"))?2:
-    						((!strcasecmp(argv[2],"Uc"))?1: 0 )));
+    						((!strcasecmp(argv[2],"Uc"))?1: 0 ))));
 		if (system_upgrade) {
 				if (4>system_upgrade) {
 					if (argc <4) {
@@ -870,6 +876,19 @@ bool lgdst_upgrade_tx(int argc, char **argv)  // return -1 when failed, liyenho
   	FILE *file_up ;
   	int end, cur, len;
   	bool first_file = true;
+	if (5/*fpga switch*/== system_upgrade) {
+		do_exit = 4; // notify all other threads to exit
+		short_sleep(2);
+		pthread_mutex_lock(&mux);
+		libusb_control_transfer(devh,
+					CTRL_OUT,
+					USB_RQ,
+					USB_FPGA_NEW_VAL,
+					USB_HOST_MSG_IDX,
+					NULL, 0, 0);
+		pthread_mutex_unlock(&mux);
+		return false;
+	}
 upgrade_firmware:
 	if (4>system_upgrade) {
 		file_up = fopen(upgrade_fwm_path, "rb");
