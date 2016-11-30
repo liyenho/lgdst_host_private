@@ -33,6 +33,7 @@ TX access library usage (all numbers are in hex radix)
 	lgdst 0 tx Vf															gives current FPGA HW version
 	lgdst 0 tx Va															gives current Atmel FW version
 	lgdst 0 tx Uf file												upgrade FPGA HW with given bin file
+	lgdst 0 tx Uf0 														switch FPGA to app image
 	lgdst 0 tx Ua file												upgrade Atmel FW with given bin file
 	lgdst 0 tx ns															restart TS streaming activity
 	lgdst 0 tx s																stop TS streaming activity
