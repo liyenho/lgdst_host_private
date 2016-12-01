@@ -24,9 +24,9 @@
 #define false													0
 //#define print_usage                    puts("lgdst 0 tx/rx [Vn/Vf]/[Vc]/Va/[Uc]/[Uf]/ns/s/wbs/ws/wb/w/rb/r/pair-id/[locked]/Cst/MDst/Cch/[rfch]/[atten]/temp/ctune ctrl-ch/fpath/adr [chidx] [atten] [bsz] [val0,val1,...], all numbers are in hex");
 #ifdef DBG_BOOTSTRAP_BYPASS
-  #define print_usage                    puts("lgdst 0 tx bm/[Vn/Vf]/Va/[Uf/0]/ns/s/wbs/ws/wb/w/rb/r/pair-id/pair-locked/loc-gps/ant-qry/droneyaw/camyaw/[locked]/Cst/MDst/[rfch]/[atten]/temp/ctune/calib/calib-qry/hopless fpath/adr [chidx] [atten] [bsz] [val0,val1,...], all numbers are in hex");
+  #define print_usage                    puts("lgdst 0 tx bm/[Vn/Vf]/Va/fbm/[Uf/0]/ns/s/wbs/ws/wb/w/rb/r/pair-id/pair-locked/loc-gps/ant-qry/droneyaw/camyaw/[locked]/Cst/MDst/[rfch]/[atten]/temp/ctune/calib/calib-qry/hopless fpath/adr [chidx] [atten] [bsz] [val0,val1,...], all numbers are in hex");
 #else
-  #define print_usage                    puts("lgdst 0 tx [Vn/Vf]/Va/[Uf]/ns/s/wbs/ws/wb/w/rb/r/pair-id/pair-locked/loc-gps/ant-qry/droneyaw/camyaw/[locked]/Cst/MDst/[rfch]/[atten]/temp/ctune/calib/calib-qry/hopless fpath/adr [chidx] [atten] [bsz] [val0,val1,...], all numbers are in hex");
+  #define print_usage                    puts("lgdst 0 tx [Vn/Vf]/Va/fbm/[Uf/0]/ns/s/wbs/ws/wb/w/rb/r/pair-id/pair-locked/loc-gps/ant-qry/droneyaw/camyaw/[locked]/Cst/MDst/[rfch]/[atten]/temp/ctune/calib/calib-qry/hopless fpath/adr [chidx] [atten] [bsz] [val0,val1,...], all numbers are in hex");
 #endif
 #define RAED_SETUP	\
 							shmLgdst_proc->type = ACS; \
@@ -267,6 +267,7 @@ static void ctrl_chsel_func(int entry) {
 #ifdef DBG_BOOTSTRAP_BYPASS
 	        strcasecmp(argv[3],"bm") /*atm boot mode*/&&
 #endif
+	        strcasecmp(argv[3],"fbm") /*fpga boot mode*/&&
 	        strcasecmp(argv[3],"Ua") /*atmel*/&&
 	        strcasecmp(argv[3],"Vn") /*nois*/&&
 	        strcasecmp(argv[3],"Vf") /*fpga*/&&
@@ -527,6 +528,23 @@ static void ctrl_chsel_func(int entry) {
 					goto _read;
 			}
 #endif
+			else if ((true/*Tx*/==work_mode) && !strcasecmp(argv[3],"fbm")) {
+				if (5 != argc ) {
+					perror_exit("lgdst 0 tx fbm 1/0 (1:to factory, 0:to app)",-8);
+				}
+				uint8_t mode = htoi(argv[4]);
+				if (1!=mode && 0!=mode) {
+					perror_exit(" lgdst 0 tx fbm 1/0 (1:to factory, 0:to app)",-8);
+				}
+				shmLgdst_proc->type = CMD1;
+				shmLgdst_proc->len = sizeof(mode);
+				shmLgdst_proc->tag.wDir = CTRL_OUT;
+				shmLgdst_proc->tag.wValue = USB_FPGA_DEF_VAL;
+				shmLgdst_proc->tag.wIndex = USB_HOST_MSG_IDX;
+				char *pc = (char*)shmLgdst_proc->access.hdr.data;
+					*pc = mode;
+					goto _read;
+			}
 			else if (!strcasecmp(argv[3],"Ua")) {
 				if (5 != argc) {
 					perror_exit("invalid command line parameters, lgdst 0 tx Ua bin-file-path",-3);

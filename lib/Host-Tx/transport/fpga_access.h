@@ -85,6 +85,7 @@ enum access_mode {
 
 #define USB_ATMEL_VER_VAL								0x20
 #define USB_BOOT_APP_VAL								0xa4
+#define USB_FPGA_DEF_VAL							0xa3
 #define USB_CPLD_UPGRADE_VAL				0x21  // cpld upgrade cmd
 #define USB_FPGA_UPGRADE_VAL				0x22  // fpga upgrade cmd
 #define USB_FPGA_NEW_VAL							0x24  // fpga app image cmd
