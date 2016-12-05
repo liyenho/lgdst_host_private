@@ -226,9 +226,9 @@ typedef struct Short_Statistics_S
 {
     //Statistics parameters
     uint32_t IsDemodLocked;
-    uint32_t InBandPwr;
+    /*uint32_t*/int32_t InBandPwr;
     uint32_t BER;
-    uint32_t SNR;
+    /*uint32_t*/int32_t SNR;
     uint32_t TotalTSPackets;
     uint32_t ErrorTSPackets;
 } Short_Statistics_ST;
