@@ -87,13 +87,11 @@ ${ACCESS}: dep.acs $(o.acs)
 
 lgdst_tx: lgdst_tx.c
 	${CC} -shared -o lib$@.so.1.0 $(CFLAGS) -DSND -fPIC $@.c $(LDFLAGS)
-	/bin/rm -f lib$@.so
-	/bin/ln -s lib$@.so.1.0 lib$@.so
+	/bin/ln -fs lib$@.so.1.0 lib$@.so
 
 access_tx:	${SRC_ACCESS}
 	${CC} -shared -o lib$@.so.1.0 $(CFLAGS) -DLIB -fPIC ${SRC_ACCESS} $(LDFLAGS)
-	/bin/rm -f lib$@.so
-	/bin/ln -s lib$@.so.1.0 lib$@.so
+	/bin/ln -fs lib$@.so.1.0 lib$@.so
 
 clean:
 	/bin/rm -f ${RECORD}
