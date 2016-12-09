@@ -64,10 +64,25 @@ ifeq "$(REC)"	"1"
 endif
 endif
 
-usb_tx: usb_tx.c timer.c
-	${CC} -o $@ $(CFLAGS) $@.c timer.c  $(LDFLAGS)
+SRC_USBTX = usb_tx.c timer.c
+dep.usbtx: ${SRC_USBTX}
+	@echo "Creating USB TX dependencies..."
+	for i in ${SRC_USBTX}; do \
+	($(CC) -MM $(CFLAGS) $$i >> tmp_depend); done
+	mv tmp_depend dep.usbtx
 
-${ACCESS}: ${SRC_ACCESS}
+o.usbtx = $(SRC_USBTX:.c=.o)
+usb_tx: dep.usbtx $(o.usbtx)
+	${CC} -o $@ $(CFLAGS) ${SRC_USBTX}  $(LDFLAGS)
+
+dep.acs: ${SRC_ACCESS}
+	@echo "Creating LGDST dependencies..."
+	for i in ${SRC_ACCESS}; do \
+	($(CC) -MM $(CFLAGS) $$i >> tmp_depend); done
+	mv tmp_depend dep.acs
+
+o.acs = $(SRC_ACCESS:.c=.o)
+${ACCESS}: dep.acs $(o.acs)
 	${CC} -o $@ $(CFLAGS) ${SRC_ACCESS} $(LDFLAGS)
 
 lgdst_tx: lgdst_tx.c
@@ -89,5 +104,8 @@ clean:
 	/bin/rm -f usb_tx
 	/bin/rm -f *lgdst_tx.so*
 	/bin/rm -f *access_tx.so*
+	/bin/rm -f dep.*
 	/bin/rm -f *.o
 
+-include dep.usbtx
+-include dep.acs
