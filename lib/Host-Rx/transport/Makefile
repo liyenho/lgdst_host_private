@@ -43,7 +43,7 @@ access_ctl_rx: dep.acs_ctl $(o.acs_ctl)
 SRC_ACCESS_V= fpga_access_v.c timer.c
 dep.acs_vid: ${SRC_ACCESS_V}
 	@echo "Creating VID dependencies..."
-	for i in ${SRC_ACCESS_C}; do \
+	for i in ${SRC_ACCESS_V}; do \
 	($(CC) -MM $(CFLAGS) $$i >> tmp_depend); done
 	mv tmp_depend dep.acs_vid
 
