@@ -30,8 +30,7 @@ extern  volatile ipcLgdst *shmLgdst_proc;
 static int do_exit = 0;	// main loop breaker
 static bool work_mode = (bool)-1;
 static rf_params Rf_Params;
-#define LIB
-#define REC
+
 static void at_exit(int status) {
 	if (do_exit) {
 		do_exit = -1;

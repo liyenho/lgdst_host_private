@@ -1,8 +1,8 @@
 #Compiler definitions
 CC=gcc
 
-#C flag definitions
-CFLAGS 	  = -O3 -Wfatal-errors -std=gnu99 -I./ -I/usr/include/ -I/usr/local/include/libusb-1.0
+#C flag definitions, -DLIB must be declared here to be invoked by gcc to compile object file from source
+CFLAGS 	  = -O3 -DREC -DLIB -Wfatal-errors -std=gnu99 -I./ -I/usr/include/ -I/usr/local/include/libusb-1.0
 LDFLAGS		= -L./ -L/usr/local/lib -L/usr/lib -lusb-1.0 -lpthread -lrt -lm #-lX11 -lglut -lGL -lGLU
 # makefile changes necessary to generate .so file
 
@@ -23,7 +23,7 @@ dep.lgdst: ${SRC_LGDST}
 
 o.lgdst = $(SRC_LGDST:.c=.o)
 lgdst_rx: dep.lgdst $(o.lgdst)
-	${CC} -shared -o lib$@.so.1.0 $(CFLAGS) -DREC -fPIC $@.c $(LDFLAGS)
+	${CC} -shared -o lib$@.so.1.0 $(CFLAGS) -fPIC $@.c $(LDFLAGS)
 	/bin/touch $@	# create dummy target
 	/bin/ln -fs lib$@.so.1.0 lib$@.so
 
@@ -36,7 +36,7 @@ dep.acs_ctl: ${SRC_ACCESS_C}
 
 o.acs_ctl = $(SRC_ACCESS_C:.c=.o)
 access_ctl_rx: dep.acs_ctl $(o.acs_ctl)
-	${CC} -shared -o lib$@.so.1.0 $(CFLAGS) -DLIB -fPIC ${SRC_ACCESS_C} $(LDFLAGS)
+	${CC} -shared -o lib$@.so.1.0 $(CFLAGS) -fPIC ${SRC_ACCESS_C} $(LDFLAGS)
 	/bin/touch $@	# create dummy target
 	/bin/ln -fs lib$@.so.1.0 lib$@.so
 
@@ -49,7 +49,7 @@ dep.acs_vid: ${SRC_ACCESS_V}
 
 o.acs_vid = $(SRC_ACCESS_V:.c=.o)
 access_vid_rx: dep.acs_vid $(o.acs_vid)
-	${CC} -shared -o lib$@.so.1.0 $(CFLAGS) -DLIB -fPIC ${SRC_ACCESS_V} $(LDFLAGS)
+	${CC} -shared -o lib$@.so.1.0 $(CFLAGS) -fPIC ${SRC_ACCESS_V} $(LDFLAGS)
 	/bin/touch $@	# create dummy target
 	/bin/ln -fs lib$@.so.1.0 lib$@.so
 

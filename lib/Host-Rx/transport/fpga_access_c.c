@@ -25,8 +25,6 @@
 							shmLgdst_proc->tag.wValue = USB_HOST_MSG_TX_VAL; \
 							shmLgdst_proc->tag.wIndex = USB_HOST_MSG_IDX; \
     	  	 				goto _read;
-#define LIB
-#define REC
 typedef int bool;  // don't remove or modify, please
 
 
