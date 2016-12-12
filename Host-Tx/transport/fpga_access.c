@@ -697,7 +697,7 @@ static void ctrl_chsel_func(int entry) {
 			    }
 				else if (!strcasecmp(argv[3],"droneyaw")) { // get drone yaw
 	    	        float yaw = atof(argv[4]);
-	    	        if ( (-360>tmp) || (360<tmp)) {
+	    	        if ( (-360>yaw) || (360<yaw)) {
  					puts("Invalid drone yaw value, must be within (-360,360)");
 		     		goto _exit; }
 
@@ -712,7 +712,7 @@ static void ctrl_chsel_func(int entry) {
 			    }
 				else if (!strcasecmp(argv[3],"camyaw")) { // get camera yaw
 	    	        float yaw = atof(argv[4]);
-	    	        if ( (-360>tmp) || (360<tmp)){
+	    	        if ( (-360>yaw) || (360<yaw)){
  					puts("Invalid camera yaw value, must be within (-360,360)");
 		     		goto _exit; }
 
