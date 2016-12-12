@@ -701,6 +701,7 @@ static bool open_ini(int *setting_ch,int *setting_pwr)
 	if (r < 0)
 		perror_exit("failed to initialise libusb",1);
 	libusb_set_debug(NULL, 2);
+	while (1) { // wait for atmel usb ready
 #if (1/*0*/)
 	devh = libusb_open_device_with_vid_pid(NULL,
 					USB_DEV_VENDER, USB_DEV_PRODUCT);
@@ -741,9 +742,12 @@ static bool open_ini(int *setting_ch,int *setting_pwr)
   sprintf(servIP,"%s",argv[2]);
   #endif
 libusb_next:
-	if (devh <= 0) {
-		libusb_exit(NULL);
-		perror_exit("could not find/open USB device",2);
+		if (devh <= 0) {
+			//libusb_exit(NULL);
+			//perror_exit("could not find/open USB device",2);
+			puts("wait for atmel usb ready...");
+		}
+		else break;
 	}
 	r = libusb_claim_interface(devh,USB_DEV_INTF);
 	if (r < 0) {
