@@ -46,12 +46,12 @@ typedef struct {
 	uint16_t  wIndex;
 } uTag; // usb tags of ctrl xfer
 typedef struct {
+	int active;
+	bool echo;
 	uint16_t  type;
 	uint16_t len;
 	uTag   tag;
 	dAccess access;
-	int active;
-	bool echo;
 } ipcLgdst;
 
 enum access_mode {

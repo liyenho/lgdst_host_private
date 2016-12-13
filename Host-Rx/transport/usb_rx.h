@@ -41,12 +41,12 @@ typedef struct {
 	uint16_t  wIndex;
 } uTag; // usb tags of ctrl xfer
 typedef struct {
+	int active;
+	bool echo;
 	uint16_t  type;
 	uint16_t len;
 	uTag   tag;
 	dAccess access;
-	int active;
-	bool echo;
 } ipcLgdst;
 /*
   bit 15-12: SPI Command defined as following
