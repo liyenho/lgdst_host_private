@@ -814,7 +814,9 @@ upgrade_firmware:
 	  		fw_info[2] = 0x00295700;  // constant fpga download address
 	  			goto download;
   			}
-next_file: // required two files to upgrade fpga/nios content
+#ifndef NON_NIOS
+  next_file: // required two files to upgrade fpga/nios content
+#endif
   			{
 	  			if (!upgrade_from_lgdst)
 	  				strncpy(upgrade_fwm_path, argv[4], sizeof(upgrade_fwm_path));
@@ -995,9 +997,11 @@ download:
  	if (2<system_upgrade || (4== argc && !strcasecmp(argv[3], upgrade_fwm_path)))
 		 goto _fail; // finished regardless if there's error
 	else {
+#ifndef NON_NIOS
 		if (2 == system_upgrade && first_file)
 			goto next_file;
 	else
+#endif
 		goto _exit; // normal shutdown
   	}
   }
