@@ -296,6 +296,7 @@ typedef struct RECEPTION_STATISTICS_S
 	 struct {
 		 uint16_t chan_idx;
 		 uint16_t pwr_att;
+		 uint16_t tone_on; // tone generation, 1: turn on, 0: turn off
 	 } params_tx;
 	 struct {
 		 dev_cfg *pregs_6612;
@@ -303,3 +304,4 @@ typedef struct RECEPTION_STATISTICS_S
  } rf_params;
  #define RF_TX_FREQ_VAL				0x13
  #define RF_TX_ATTN_VAL				0x14
+ #define RF_TX_CARRIER					0x15

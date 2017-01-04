@@ -24,9 +24,9 @@
 #define false													0
 //#define print_usage                    puts("lgdst 0 tx/rx [Vn/Vf]/[Vc]/Va/[Uc]/[Uf]/ns/s/wbs/ws/wb/w/rb/r/pair-id/[locked]/Cst/MDst/Cch/[rfch]/[atten]/temp/ctune ctrl-ch/fpath/adr [chidx] [atten] [bsz] [val0,val1,...], all numbers are in hex");
 #ifdef DBG_BOOTSTRAP_BYPASS
-  #define print_usage                    puts("lgdst 0 tx bm/[Vn/Vf]/Va/fbm/[Uf/0]/ns/s/wbs/ws/wb/w/rb/r/pair-id/pair-locked/loc-gps/ant-qry/droneyaw/camyaw/[locked]/Cst/MDst/[rfch]/[atten]/temp/ctune/calib/calib-qry/hopless fpath/adr [chidx] [atten] [bsz] [val0,val1,...], all numbers are in hex");
+  #define print_usage                    puts("lgdst 0 tx bm/[Vn/Vf]/Va/fbm/[Uf/0]/ns/s/wbs/ws/wb/w/rb/r/pair-id/pair-locked/loc-gps/ant-qry/droneyaw/camyaw/[locked]/Cst/MDst/[rfch]/[atten][tg]/temp/ctune/calib/calib-qry/hopless fpath/adr [chidx] [atten] [bsz] [val0,val1,...], all numbers are in hex");
 #else
-  #define print_usage                    puts("lgdst 0 tx [Vn/Vf]/Va/fbm/[Uf/0]/ns/s/wbs/ws/wb/w/rb/r/pair-id/pair-locked/loc-gps/ant-qry/droneyaw/camyaw/[locked]/Cst/MDst/[rfch]/[atten]/temp/ctune/calib/calib-qry/hopless fpath/adr [chidx] [atten] [bsz] [val0,val1,...], all numbers are in hex");
+  #define print_usage                    puts("lgdst 0 tx [Vn/Vf]/Va/fbm/[Uf/0]/ns/s/wbs/ws/wb/w/rb/r/pair-id/pair-locked/loc-gps/ant-qry/droneyaw/camyaw/[locked]/Cst/MDst/[rfch]/[atten][tg]/temp/ctune/calib/calib-qry/hopless fpath/adr [chidx] [atten] [bsz] [val0,val1,...], all numbers are in hex");
 #endif
 #define RAED_SETUP	\
 							shmLgdst_proc->type = ACS; \
@@ -260,6 +260,7 @@ static void ctrl_chsel_func(int entry) {
 	        strcasecmp(argv[3],"locked") &&
 	        strcasecmp(argv[3],"rfch") &&
 	        strcasecmp(argv[3],"atten") &&
+	        strcasecmp(argv[3],"tg") && // carrier tone generation, tx specific
 	        strcasecmp(argv[3],"retune") &&
 	        strcasecmp(argv[3],"Uc") /*cpld*/&&
 	        strcasecmp(argv[3],"Uf") /*fpga*/&&
@@ -465,6 +466,16 @@ static void ctrl_chsel_func(int entry) {
 				shmLgdst_proc->len = sizeof(Rf_Params.params_tx);
 				shmLgdst_proc->tag.wDir = CTRL_OUT;
 				shmLgdst_proc->tag.wValue = RF_TX_ATTN_VAL;
+				shmLgdst_proc->tag.wIndex = USB_HOST_MSG_IDX;
+				memcpy(shmLgdst_proc->access.hdr.data, &Rf_Params.params_tx, sizeof(Rf_Params.params_tx));
+				goto _read;
+		}
+	    else if ((true/*Tx*/==work_mode) && !strcasecmp(argv[3],"tg")) {
+    	  	 	Rf_Params.params_tx.tone_on = htoi(argv[4]); // 0 or 1
+				shmLgdst_proc->type = CMD1;
+				shmLgdst_proc->len = sizeof(Rf_Params.params_tx);
+				shmLgdst_proc->tag.wDir = CTRL_OUT;
+				shmLgdst_proc->tag.wValue = RF_TX_CARRIER;
 				shmLgdst_proc->tag.wIndex = USB_HOST_MSG_IDX;
 				memcpy(shmLgdst_proc->access.hdr.data, &Rf_Params.params_tx, sizeof(Rf_Params.params_tx));
 				goto _read;
