@@ -1105,7 +1105,7 @@ try_again:
   #ifdef ATMEL_END2END
   #ifdef TEST_BITSTREAM
     #ifndef SRC_FRM_ENET
-		short_sleep((3000)*10e-6);
+		short_sleep((300000)*10e-6); // be sure sufficient turnaround time at atmel
 	 #endif
   #else
     #ifndef SRC_FRM_ENET
