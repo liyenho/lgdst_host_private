@@ -46,6 +46,9 @@ char upgrade_fwm_path[160]; // upgrade firmware path
   volatile bool si4463_radio_up = false ;
  #endif
  //#define COMM_ATMEL_DEV // enable atmel<->fpga/6612 comm test
+#ifdef SRC_FRM_ENET
+ volatile bool ready_wait_for_mloop= false;
+#endif
  	#ifdef RADIO_SI4463
  	unsigned short ctrl_port_base;
   char servIP[32];
@@ -335,10 +338,8 @@ static void *poll_thread_main(void *arg)
 	int ctrlsnd_pt = htons(ctrl_port_base);
   int ctrlrcv_pt = htons(ctrl_port_base+1);
 	int tx_cnt= 0, rx_cnt= 0;
-
 	r = socket(AF_INET,SOCK_DGRAM,0);
   s = socket(AF_INET,SOCK_DGRAM,0);
-
 	if ((-1 != r) &&(-1!=s)) {
 		ctrlsnd.sin_family = AF_INET;
 		ctrlsnd.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -347,7 +348,6 @@ static void *poll_thread_main(void *arg)
     ctrlsnd_len = sizeof(ctrlsnd);
 		if (bind(r, (struct sockaddr *) &ctrlsnd, sizeof(ctrlsnd)) < 0)
 			{	DieWithError("ctrlsnd: bind() failed"); }
-
  		ctrlrcv.sin_family = AF_INET;
 		ctrlrcv.sin_addr.s_addr = inet_addr(servIP);
 		ctrlrcv.sin_port = ctrlrcv_pt; //ctrl_pt+1, for socket output port
@@ -357,6 +357,7 @@ static void *poll_thread_main(void *arg)
 	}
 #endif
 #ifdef SRC_FRM_ENET
+		while (!ready_wait_for_mloop) ;
 		pthread_mutex_lock(&mux);
  		do {
 			 libusb_control_transfer(devh,
@@ -1063,6 +1064,7 @@ try_again:
  #ifndef SRC_FRM_ENET // extract ts packets from socket
 	fread(audbuf, FRAME_SIZE_A, 1,file);
  #else
+ 	ready_wait_for_mloop = true;
    /************************************************************************/
   udpin_init(); // initialize socket intf
   #ifdef TEST_BITSTREAM

@@ -47,6 +47,7 @@ static char upgrade_fwm_path[160]; // upgrade firmware path
   static volatile bool si4463_radio_up = false ;
  #endif
  //#define COMM_ATMEL_DEV // enable atmel<->fpga/6612 comm test
+ volatile bool ready_wait_for_mloop= false;
  	#ifdef RADIO_SI4463
  	static unsigned short ctrl_port_base;
   static char servIP[32];
@@ -375,6 +376,7 @@ static void *poll_thread_main(void *arg)
 			ctrl_sckt_ok = true; // validate socket open
 	}
 #endif
+		while (!ready_wait_for_mloop) ;
 		pthread_mutex_lock(&mux);
  		do {
 			 libusb_control_transfer(devh,
@@ -831,6 +833,7 @@ try_again:
  #ifndef SRC_FRM_ENET // extract ts packets from socket
 	//fread(audbuf, FRAME_SIZE_A, 1,file);
  #else
+ 	ready_wait_for_mloop = true;
    /************************************************************************/
   udpin_init(); // initialize socket intf
    /************************************************************************/

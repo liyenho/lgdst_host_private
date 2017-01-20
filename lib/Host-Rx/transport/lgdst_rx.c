@@ -52,6 +52,7 @@ static char upgrade_fwm_path[160]; // upgrade firmware path
  static volatile bool si4463_radio_up = false ;
  #endif
  //#define COMM_ATMEL_DEV // enable atmel<->fpga/6612 comm test
+ volatile bool ready_wait_for_mloop= false;
  	#ifdef RADIO_SI4463
  	static unsigned short ctrl_port_base;
   static char servIP[32];
@@ -394,7 +395,7 @@ static void *poll_thread_main(void *arg)
 
 			ctrl_sckt_ok = true; // validate socket open
 	} //socket init fail check
-
+		while (!ready_wait_for_mloop) ;
 		pthread_mutex_lock(&mux);
  		do {
 			 libusb_control_transfer(devh,
@@ -836,6 +837,7 @@ static bool open_ini(int *setting_rec)
 #if defined(ATMEL_END2END)
 	libusb_control_transfer(devh, CTRL_OUT, USB_RQ, 0x07, 0, NULL, 0, 0);
 #endif
+	ready_wait_for_mloop = true;
 	tag = 0;
 	return 0;
 }

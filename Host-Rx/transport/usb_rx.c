@@ -46,6 +46,7 @@ char upgrade_fwm_path[160]; // upgrade firmware path
  volatile bool si4463_radio_up = false ;
  #endif
  //#define COMM_ATMEL_DEV // enable atmel<->fpga/6612 comm test
+ volatile bool ready_wait_for_mloop= false;
  	#ifdef RADIO_SI4463
  	unsigned short ctrl_port_base;
   char servIP[32];
@@ -426,7 +427,7 @@ static void *poll_thread_main(void *arg)
 
 			ctrl_sckt_ok = true; // validate socket open
 	} //socket init fail check
-
+		while (!ready_wait_for_mloop) ;
 		pthread_mutex_lock(&mux);
  		do {
 			 libusb_control_transfer(devh,
@@ -1070,7 +1071,7 @@ int main(int argc,char **argv)
 
 	while (1) //for (int i=0; i < 10; i ++)
  	{
-#if (1/*0*/)
+#if (/*1*/0)
 		devh = libusb_open_device_with_vid_pid(NULL,
 					USB_DEV_VENDER, USB_DEV_PRODUCT);
 #else
@@ -1573,6 +1574,7 @@ upgrade_firmware:
 		USB_LOADM_LEN,
 		0);
 #endif
+	ready_wait_for_mloop = true;
 	tag = 0;
 	get_time(&tstart);
 #ifdef REC
@@ -1631,6 +1633,10 @@ upgrade_firmware:
   	  #ifdef PES_FRM_PROT
   		frames_len = chksm_exam_pkt_ts(sz, audbuf, retbuf);
   	  #else // PES_FRM_PROT1
+/*static FILE *f1 = 0;	// enabled video dump for debug, liyenho
+if (!f1) f1 = fopen("video_dbg0.ts","wb");
+fwrite(audbuf, sz, 1, f1);
+fflush(f1);*/
 		 frames_len = TEI_exam_pkt_ts(sz, audbuf, retbuf);
      #endif
 		if (!frames_len) goto frm_inc;
@@ -1640,7 +1646,7 @@ upgrade_firmware:
 #endif // TEST==2
 	#ifdef REC
 	  #if !defined(PES_FRM_PROT) && !defined(PES_FRM_PROT1)
-    tsptsadj(audbuf, FRAME_SIZE_A, pidvid, pidpcr);
+     tsptsadj(audbuf, FRAME_SIZE_A, pidvid, pidpcr);
      #endif
 		if (ITERS==tag)
 		 #if !defined(PES_HDR_PROT) && !defined(PES_FRM_PROT) && !defined(PES_FRM_PROT1)
@@ -1753,6 +1759,10 @@ upgrade_firmware:
 	unsigned char *pb = audbuf;
     #ifndef REALIGN_TS_PKT
     	#if !defined(PES_FRM_PROT) && !defined(PES_FRM_PROT1)
+static FILE *f2 = 0;	// enabled video dump for debug, liyenho
+if (!f2) f2 = fopen("video_dbg.ts","wb");
+fwrite(audbuf, r, 1, f2);
+fflush(f2);
 				for (frag=0; frag<5; frag++) {
 					sentsize=sendto(udpout_socket, pb, r/5,0,(struct sockaddr *)&udpout,
 	                  udpout_len);
@@ -1762,6 +1772,10 @@ upgrade_firmware:
       #else
 			       {
 				pb = retbuf;
+/*static FILE *f3 = 0;	// enabled video dump for debug, liyenho
+if (!f3) f3 = fopen("video_dbg.ts","wb");
+fwrite(retbuf, r, 1, f3);
+fflush(f3);*/
 		#ifndef DBG_PROT1
 						for (frag=0; frag<r/(188*2); frag++) {
 							sentsize=sendto(udpout_socket, pb, 188*2,0,(struct sockaddr *)&udpout,
