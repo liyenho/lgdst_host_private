@@ -88,6 +88,9 @@ enum access_mode {
 #define USB_CPLD_UPGRADE_VAL				0x21  // cpld upgrade cmd
 #define USB_FPGA_UPGRADE_VAL				0x22  // fpga upgrade cmd
 #define USB_ATMEL_UPGRADE_VAL			0x23	// atmel upgrade cmd
+// these two cmds  are for starting or stopping TS record
+#define USB_SAVE_TS_VAL									0xf1
+#define USB_UNSAVE_TS_VAL							0x1f
 #define USB_STREAM_OFF_VAL						0xa
 #define USB_STREAM_ON_VAL						0xe
 #define USB_RX_TUNE_VAL						0xf
@@ -144,78 +147,16 @@ typedef struct  {
   #define USB_HOST_MSG_IDX						0x1	// data instead comm interface
   #define USB_HOST_MSG_LEN						sizeof(dev_access)
 
-// !Si446x RF Channel definitions in 25.5 mhz range divided into 14 bands of 3.43 mhz wide,
-// each band contains 50 hopping channels in 70 khz separation, all calculations are based
-// upon 32 mhz reference crystal
-const uint8_t RF_FREQ_CONTROL_INTE_BAND0_6[] = {0x11, 0x40, 0x06, 0x00, 0x37, 0x0B, 0x24, 0x7A, 0x08, 0xF6}; // 902.285 mhz
-  const uint8_t RF_MODEM_AFC_LIMITER_BAND0_3[] = {0x11, 0x20, 0x03, 0x30, 0x25, 0x16, 0xC0};
-const uint8_t RF_FREQ_CONTROL_INTE_BAND1_6[] = {0x11, 0x40, 0x06, 0x00, 0x37, 0x0C, 0x04, 0x7A, 0x08, 0xF6}; // 904.035 mhz
-  const uint8_t RF_MODEM_AFC_LIMITER_BAND1_3[] = {0x11, 0x20, 0x03, 0x30, 0x25, 0x16, 0xC0};
-const uint8_t RF_FREQ_CONTROL_INTE_BAND2_6[] = {0x11, 0x40, 0x06, 0x00, 0x37, 0x0C, 0xE4, 0x7A, 0x08, 0xF6}; // 905.785 mhz
-  const uint8_t RF_MODEM_AFC_LIMITER_BAND2_3[] = {0x11, 0x20, 0x03, 0x30, 0x25, 0x16, 0xC0};
-const uint8_t RF_FREQ_CONTROL_INTE_BAND3_6[] = {0x11, 0x40, 0x06, 0x00, 0x37, 0x0D, 0xC4, 0x7A, 0x08, 0xF6}; // 907.535 mhz
-  const uint8_t RF_MODEM_AFC_LIMITER_BAND3_3[] = {0x11, 0x20, 0x03, 0x30, 0x25, 0x16, 0xC0};
-const uint8_t RF_FREQ_CONTROL_INTE_BAND4_6[] = {0x11, 0x40, 0x06, 0x00, 0x37, 0x0E, 0xA4, 0x7A, 0x08, 0xF6}; // 909.285 mhz
-  const uint8_t RF_MODEM_AFC_LIMITER_BAND4_3[] = {0x11, 0x20, 0x03, 0x30,  0x25, 0x16, 0xC0};
-const uint8_t RF_FREQ_CONTROL_INTE_BAND5_6[] = {0x11, 0x40, 0x06, 0x00, 0x37, 0x0F, 0x84, 0x7A, 0x08, 0xF6}; // 911.035 mhz
-  const uint8_t RF_MODEM_AFC_LIMITER_BAND5_3[] = {0x11, 0x20, 0x03, 0x30, 0x25, 0x16, 0xC0};
-const uint8_t RF_FREQ_CONTROL_INTE_BAND6_6[] = {0x11, 0x40, 0x06, 0x00, 0x38, 0x08, 0x64, 0x7A, 0x08, 0xF6}; // 912.785 mhz
-  const uint8_t RF_MODEM_AFC_LIMITER_BAND6_3[] = {0x11, 0x20, 0x03, 0x30, 0x25, 0x16, 0xC0};
-const uint8_t RF_FREQ_CONTROL_INTE_BAND7_6[] = {0x11, 0x40, 0x06, 0x00, 0x38, 0x09, 0x44, 0x7A, 0x08, 0xF6}; // 914.535 mhz
-  const uint8_t RF_MODEM_AFC_LIMITER_BAND7_3[] = {0x11, 0x20, 0x03, 0x30, 0x25, 0x16, 0xC0};
-const uint8_t RF_FREQ_CONTROL_INTE_BAND8_6[] = {0x11, 0x40, 0x06, 0x00, 0x38, 0x0A, 0x24, 0x7A, 0x08, 0xF6}; // 916.250 mhz
-  const uint8_t RF_MODEM_AFC_LIMITER_BAND8_3[] = {0x11, 0x20, 0x03, 0x30, 0x25, 0x16, 0xC0};
-const uint8_t RF_FREQ_CONTROL_INTE_BAND9_6[] = {0x11, 0x40, 0x06, 0x00, 0x38, 0x0B, 0x04, 0x7A, 0x08, 0xF6}; // 918.035 mhz
-  const uint8_t RF_MODEM_AFC_LIMITER_BAND9_3[] = {0x11, 0x20, 0x03, 0x30, 0x25, 0x16, 0xC0};
-const uint8_t RF_FREQ_CONTROL_INTE_BAND10_6[] = {0x11, 0x40, 0x06, 0x00, 0x38, 0x0B, 0xE4, 0x7A, 0x08, 0xF6}; // 919.785 mhz
-  const uint8_t RF_MODEM_AFC_LIMITER_BAND10_3[] = {0x11, 0x20, 0x03, 0x30, 0x25, 0x16, 0xC0};
-const uint8_t RF_FREQ_CONTROL_INTE_BAND11_6[] = {0x11, 0x40, 0x06, 0x00, 0x38, 0x0C, 0xC4, 0x7A, 0x08, 0xF6}; // 921.535 mhz
-  const uint8_t RF_MODEM_AFC_LIMITER_BAND11_3[] = {0x11, 0x20, 0x03, 0x30, 0x25, 0x16, 0xC0};
-const uint8_t RF_FREQ_CONTROL_INTE_BAND12_6[] = {0x11, 0x40, 0x06, 0x00, 0x38, 0x0D, 0xA4, 0x7A, 0x08, 0xF6}; // 923.285 mhz
-  const uint8_t RF_MODEM_AFC_LIMITER_BAND12_3[] = {0x11, 0x20, 0x03, 0x30, 0x25, 0x16, 0xC0};
-const uint8_t RF_FREQ_CONTROL_INTE_BAND13_6[] = {0x11, 0x40, 0x06, 0x00, 0x38, 0x0E, 0x84, 0x7A, 0x08, 0xF6}; // 925.035 mhz
-  const uint8_t RF_MODEM_AFC_LIMITER_BAND13_3[] = {0x11, 0x20, 0x03, 0x30, 0x25, 0x16, 0xC0};
+ // !Si446x RF Channel definitions in 25.5 mhz range divided into 14 bands of 3.43 mhz wide,
+ // each band contains 50 hopping channels in 70 khz separation, all calculations are based
+ // upon 32 mhz reference crystal
 
-// tabulate all avaialble ctrl rf bands
-const uint8_t *chtbl_ctrl_rdo[/*14*2*/] = {
-	RF_FREQ_CONTROL_INTE_BAND0_6,
-	 RF_MODEM_AFC_LIMITER_BAND0_3,
-	RF_FREQ_CONTROL_INTE_BAND1_6,
-	 RF_MODEM_AFC_LIMITER_BAND1_3,
-	RF_FREQ_CONTROL_INTE_BAND2_6,
-	 RF_MODEM_AFC_LIMITER_BAND2_3,
-	RF_FREQ_CONTROL_INTE_BAND3_6,
-	 RF_MODEM_AFC_LIMITER_BAND3_3,
-	RF_FREQ_CONTROL_INTE_BAND4_6,
-	 RF_MODEM_AFC_LIMITER_BAND4_3,
-	RF_FREQ_CONTROL_INTE_BAND5_6,
-	 RF_MODEM_AFC_LIMITER_BAND5_3,
-	RF_FREQ_CONTROL_INTE_BAND6_6,
-	 RF_MODEM_AFC_LIMITER_BAND6_3,
-	RF_FREQ_CONTROL_INTE_BAND7_6,
-	 RF_MODEM_AFC_LIMITER_BAND7_3,
-	RF_FREQ_CONTROL_INTE_BAND8_6,
-	 RF_MODEM_AFC_LIMITER_BAND8_3,
-	RF_FREQ_CONTROL_INTE_BAND9_6,
-	 RF_MODEM_AFC_LIMITER_BAND9_3,
-	RF_FREQ_CONTROL_INTE_BAND10_6,
-	 RF_MODEM_AFC_LIMITER_BAND10_3,
-	RF_FREQ_CONTROL_INTE_BAND11_6,
-	 RF_MODEM_AFC_LIMITER_BAND11_3,
-	RF_FREQ_CONTROL_INTE_BAND12_6,
-	 RF_MODEM_AFC_LIMITER_BAND12_3,
-	RF_FREQ_CONTROL_INTE_BAND13_6,
-	 RF_MODEM_AFC_LIMITER_BAND13_3,
-} ;
 
 #define RADIO_CHSEL_IDX								0x7
 #define RADIO_CHSEL_LEN0							sizeof(RF_FREQ_CONTROL_INTE_BAND0_6)
 #define RADIO_CHSEL_LEN1							sizeof(RF_MODEM_AFC_LIMITER_BAND0_3)
 
-const uint8_t *chtbl_ctrl_len[/*2*/] = {
-	RADIO_CHSEL_LEN0,
-	RADIO_CHSEL_LEN1,
-} ;
+
 
 #define RADIO_TEMP_IDX									0x8
 #define RADIO_TEMP_LEN								sizeof(int16_t)
@@ -293,3 +234,113 @@ typedef struct RECEPTION_STATISTICS_S
  } rf_params;
  #define RF_TX_FREQ_VAL				0x13
  #define RF_TX_ATTN_VAL				0x14
+
+
+ extern const uint8_t RF_FREQ_CONTROL_INTE_BAND0_6[]; // 902.285 mhz
+ extern const uint8_t RF_MODEM_AFC_LIMITER_BAND0_3[];
+ extern const uint8_t RF_FREQ_CONTROL_INTE_BAND1_6[] ; // 904.035 mhz
+ extern const uint8_t RF_MODEM_AFC_LIMITER_BAND1_3[] ;
+ extern const uint8_t RF_FREQ_CONTROL_INTE_BAND2_6[] ; // 905.785 mhz
+ extern const uint8_t RF_MODEM_AFC_LIMITER_BAND2_3[];
+ extern const uint8_t RF_FREQ_CONTROL_INTE_BAND3_6[] ; // 907.535 mhz
+ extern const uint8_t RF_MODEM_AFC_LIMITER_BAND3_3[] ;
+ extern const uint8_t RF_FREQ_CONTROL_INTE_BAND4_6[]; // 909.285 mhz
+ extern const uint8_t RF_MODEM_AFC_LIMITER_BAND4_3[];
+ extern const uint8_t RF_FREQ_CONTROL_INTE_BAND5_6[] ; // 911.035 mhz
+ extern const uint8_t RF_MODEM_AFC_LIMITER_BAND5_3[];
+ extern const uint8_t RF_FREQ_CONTROL_INTE_BAND6_6[] ; // 912.785 mhz
+ extern const uint8_t RF_MODEM_AFC_LIMITER_BAND6_3[];
+ extern const uint8_t RF_FREQ_CONTROL_INTE_BAND7_6[] ; // 914.535 mhz
+ extern const uint8_t RF_MODEM_AFC_LIMITER_BAND7_3[];
+ extern const uint8_t RF_FREQ_CONTROL_INTE_BAND8_6[] ; // 916.250 mhz
+ extern const uint8_t RF_MODEM_AFC_LIMITER_BAND8_3[];
+ extern const uint8_t RF_FREQ_CONTROL_INTE_BAND9_6[]; // 918.035 mhz
+ extern const uint8_t RF_MODEM_AFC_LIMITER_BAND9_3[] ;
+ extern const uint8_t RF_FREQ_CONTROL_INTE_BAND10_6[]; // 919.785 mhz
+ extern const uint8_t RF_MODEM_AFC_LIMITER_BAND10_3[];
+ extern const uint8_t RF_FREQ_CONTROL_INTE_BAND11_6[]; // 921.535 mhz
+ extern const uint8_t RF_MODEM_AFC_LIMITER_BAND11_3[];
+ extern const uint8_t RF_FREQ_CONTROL_INTE_BAND12_6[]; // 923.285 mhz
+ extern const uint8_t RF_MODEM_AFC_LIMITER_BAND12_3[];
+ extern const uint8_t RF_FREQ_CONTROL_INTE_BAND13_6[]; // 925.035 mhz
+ extern const uint8_t RF_MODEM_AFC_LIMITER_BAND13_3[];
+
+ extern const uint8_t *chtbl_ctrl_rdo[/*14*2*/] ;
+ extern const uint8_t *chtbl_ctrl_len[/*2*/];
+
+
+
+
+#ifndef _FPAG_ACCESS_
+#define _FPAG_ACCESS_
+/********************************************/
+/***********Variable define *****************/
+
+ const uint8_t RF_FREQ_CONTROL_INTE_BAND0_6[] = {0x11, 0x40, 0x06, 0x00, 0x37, 0x0B, 0x24, 0x7A, 0x08, 0xF6}; // 902.285 mhz
+   const uint8_t RF_MODEM_AFC_LIMITER_BAND0_3[] = {0x11, 0x20, 0x03, 0x30, 0x25, 0x16, 0xC0};
+ const uint8_t RF_FREQ_CONTROL_INTE_BAND1_6[] = {0x11, 0x40, 0x06, 0x00, 0x37, 0x0C, 0x04, 0x7A, 0x08, 0xF6}; // 904.035 mhz
+   const uint8_t RF_MODEM_AFC_LIMITER_BAND1_3[] = {0x11, 0x20, 0x03, 0x30, 0x25, 0x16, 0xC0};
+ const uint8_t RF_FREQ_CONTROL_INTE_BAND2_6[] = {0x11, 0x40, 0x06, 0x00, 0x37, 0x0C, 0xE4, 0x7A, 0x08, 0xF6}; // 905.785 mhz
+   const uint8_t RF_MODEM_AFC_LIMITER_BAND2_3[] = {0x11, 0x20, 0x03, 0x30, 0x25, 0x16, 0xC0};
+ const uint8_t RF_FREQ_CONTROL_INTE_BAND3_6[] = {0x11, 0x40, 0x06, 0x00, 0x37, 0x0D, 0xC4, 0x7A, 0x08, 0xF6}; // 907.535 mhz
+   const uint8_t RF_MODEM_AFC_LIMITER_BAND3_3[] = {0x11, 0x20, 0x03, 0x30, 0x25, 0x16, 0xC0};
+ const uint8_t RF_FREQ_CONTROL_INTE_BAND4_6[] = {0x11, 0x40, 0x06, 0x00, 0x37, 0x0E, 0xA4, 0x7A, 0x08, 0xF6}; // 909.285 mhz
+   const uint8_t RF_MODEM_AFC_LIMITER_BAND4_3[] = {0x11, 0x20, 0x03, 0x30,	0x25, 0x16, 0xC0};
+ const uint8_t RF_FREQ_CONTROL_INTE_BAND5_6[] = {0x11, 0x40, 0x06, 0x00, 0x37, 0x0F, 0x84, 0x7A, 0x08, 0xF6}; // 911.035 mhz
+   const uint8_t RF_MODEM_AFC_LIMITER_BAND5_3[] = {0x11, 0x20, 0x03, 0x30, 0x25, 0x16, 0xC0};
+ const uint8_t RF_FREQ_CONTROL_INTE_BAND6_6[] = {0x11, 0x40, 0x06, 0x00, 0x38, 0x08, 0x64, 0x7A, 0x08, 0xF6}; // 912.785 mhz
+   const uint8_t RF_MODEM_AFC_LIMITER_BAND6_3[] = {0x11, 0x20, 0x03, 0x30, 0x25, 0x16, 0xC0};
+ const uint8_t RF_FREQ_CONTROL_INTE_BAND7_6[] = {0x11, 0x40, 0x06, 0x00, 0x38, 0x09, 0x44, 0x7A, 0x08, 0xF6}; // 914.535 mhz
+   const uint8_t RF_MODEM_AFC_LIMITER_BAND7_3[] = {0x11, 0x20, 0x03, 0x30, 0x25, 0x16, 0xC0};
+ const uint8_t RF_FREQ_CONTROL_INTE_BAND8_6[] = {0x11, 0x40, 0x06, 0x00, 0x38, 0x0A, 0x24, 0x7A, 0x08, 0xF6}; // 916.250 mhz
+   const uint8_t RF_MODEM_AFC_LIMITER_BAND8_3[] = {0x11, 0x20, 0x03, 0x30, 0x25, 0x16, 0xC0};
+ const uint8_t RF_FREQ_CONTROL_INTE_BAND9_6[] = {0x11, 0x40, 0x06, 0x00, 0x38, 0x0B, 0x04, 0x7A, 0x08, 0xF6}; // 918.035 mhz
+   const uint8_t RF_MODEM_AFC_LIMITER_BAND9_3[] = {0x11, 0x20, 0x03, 0x30, 0x25, 0x16, 0xC0};
+ const uint8_t RF_FREQ_CONTROL_INTE_BAND10_6[] = {0x11, 0x40, 0x06, 0x00, 0x38, 0x0B, 0xE4, 0x7A, 0x08, 0xF6}; // 919.785 mhz
+   const uint8_t RF_MODEM_AFC_LIMITER_BAND10_3[] = {0x11, 0x20, 0x03, 0x30, 0x25, 0x16, 0xC0};
+ const uint8_t RF_FREQ_CONTROL_INTE_BAND11_6[] = {0x11, 0x40, 0x06, 0x00, 0x38, 0x0C, 0xC4, 0x7A, 0x08, 0xF6}; // 921.535 mhz
+   const uint8_t RF_MODEM_AFC_LIMITER_BAND11_3[] = {0x11, 0x20, 0x03, 0x30, 0x25, 0x16, 0xC0};
+ const uint8_t RF_FREQ_CONTROL_INTE_BAND12_6[] = {0x11, 0x40, 0x06, 0x00, 0x38, 0x0D, 0xA4, 0x7A, 0x08, 0xF6}; // 923.285 mhz
+   const uint8_t RF_MODEM_AFC_LIMITER_BAND12_3[] = {0x11, 0x20, 0x03, 0x30, 0x25, 0x16, 0xC0};
+ const uint8_t RF_FREQ_CONTROL_INTE_BAND13_6[] = {0x11, 0x40, 0x06, 0x00, 0x38, 0x0E, 0x84, 0x7A, 0x08, 0xF6}; // 925.035 mhz
+   const uint8_t RF_MODEM_AFC_LIMITER_BAND13_3[] = {0x11, 0x20, 0x03, 0x30, 0x25, 0x16, 0xC0};
+
+ // tabulate all avaialble ctrl rf bands
+ const uint8_t *chtbl_ctrl_rdo[/*14*2*/] = {
+	 RF_FREQ_CONTROL_INTE_BAND0_6,
+	  RF_MODEM_AFC_LIMITER_BAND0_3,
+	 RF_FREQ_CONTROL_INTE_BAND1_6,
+	  RF_MODEM_AFC_LIMITER_BAND1_3,
+	 RF_FREQ_CONTROL_INTE_BAND2_6,
+	  RF_MODEM_AFC_LIMITER_BAND2_3,
+	 RF_FREQ_CONTROL_INTE_BAND3_6,
+	  RF_MODEM_AFC_LIMITER_BAND3_3,
+	 RF_FREQ_CONTROL_INTE_BAND4_6,
+	  RF_MODEM_AFC_LIMITER_BAND4_3,
+	 RF_FREQ_CONTROL_INTE_BAND5_6,
+	  RF_MODEM_AFC_LIMITER_BAND5_3,
+	 RF_FREQ_CONTROL_INTE_BAND6_6,
+	  RF_MODEM_AFC_LIMITER_BAND6_3,
+	 RF_FREQ_CONTROL_INTE_BAND7_6,
+	  RF_MODEM_AFC_LIMITER_BAND7_3,
+	 RF_FREQ_CONTROL_INTE_BAND8_6,
+	  RF_MODEM_AFC_LIMITER_BAND8_3,
+	 RF_FREQ_CONTROL_INTE_BAND9_6,
+	  RF_MODEM_AFC_LIMITER_BAND9_3,
+	 RF_FREQ_CONTROL_INTE_BAND10_6,
+	  RF_MODEM_AFC_LIMITER_BAND10_3,
+	 RF_FREQ_CONTROL_INTE_BAND11_6,
+	  RF_MODEM_AFC_LIMITER_BAND11_3,
+	 RF_FREQ_CONTROL_INTE_BAND12_6,
+	  RF_MODEM_AFC_LIMITER_BAND12_3,
+	 RF_FREQ_CONTROL_INTE_BAND13_6,
+	  RF_MODEM_AFC_LIMITER_BAND13_3,
+ } ;
+
+ const uint8_t *chtbl_ctrl_len[/*2*/] = {
+	 RADIO_CHSEL_LEN0,
+	 RADIO_CHSEL_LEN1,
+ } ;
+
+#endif
+

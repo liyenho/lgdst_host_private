@@ -175,6 +175,10 @@ static pthread_t poll_thread= 0,
     0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff
   };
  static struct timeval time_orig; // as starting time ref
+ //////////////////////////////////////////////////////
+static char  ts_vid_path[160];
+static FILE *fdmp_ts = 0;
+static bool save_ts = 0;
 
 //function prototyping
  int tsptsadj(unsigned char* buff, int len, int pidid, int pcrid);
@@ -487,6 +491,16 @@ static void *lgdst_thread_main(void *arg)
 			memcpy(&lclMem, &shmLgdst_proc->access, sizeof(dAccess));
 			switch(shmLgdst_proc->type) {
 				case CMD0:
+					if (USB_UNSAVE_TS_VAL == shmLgdst_proc->tag.wValue) {
+						if (save_ts)
+							fclose(fdmp_ts);
+						else
+							puts("Video TS file isn't open yet...");
+						fdmp_ts = NULL;
+						save_ts = false;
+						puts("user requests stop video TS recording...");
+						break;
+					}
 	printf("CMD0: wValue = %d, wIndex = %d\n", shmLgdst_proc->tag.wValue,
 											shmLgdst_proc->tag.wIndex);  // for debug
 					pthread_mutex_lock(&mux);
@@ -505,6 +519,19 @@ static void *lgdst_thread_main(void *arg)
     					system_upgrade = 1*(USB_CPLD_UPGRADE_VAL == shmLgdst_proc->tag.wValue) +
     															2*(USB_FPGA_UPGRADE_VAL == shmLgdst_proc->tag.wValue) ;
 						puts("user requests system firmware upgrade...");
+						break;
+					}
+					else if (USB_SAVE_TS_VAL == shmLgdst_proc->tag.wValue) {
+						if (!save_ts) {
+							strncpy(ts_vid_path, (char*)acs->data, shmLgdst_proc->len);
+							fdmp_ts = fopen(ts_vid_path, "wb");
+							if (!fdmp_ts)
+								puts("Unable to open Video TS file...");
+							 else  // do not save ts if open dump file failed
+								save_ts = true;
+						} else
+						puts("Video TS file has been open alerady...");
+						puts("user requests start video TS recording...");
 						break;
 					}
 	printf("CMD1: wDir = %d, wValue = %d, wIndex = %d, len= %d, data = %d\n",
@@ -1646,6 +1673,10 @@ fflush(f1);*/
 #endif // TEST==2
 	#ifdef REC
 	  #if !defined(PES_FRM_PROT) && !defined(PES_FRM_PROT1)
+	if (save_ts && fdmp_ts) {
+		fwrite(audbuf, FRAME_SIZE_A, 1, fdmp_ts);
+		fflush(fdmp_ts);  // just in case if user forget to close
+	}
      tsptsadj(audbuf, FRAME_SIZE_A, pidvid, pidpcr);
      #endif
 		if (ITERS==tag)
