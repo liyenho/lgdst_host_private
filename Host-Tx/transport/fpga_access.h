@@ -131,6 +131,8 @@ typedef struct {
 #define CAMERA_YAW_IDX								0x12
 #define CAMERA_YAW_LEN								sizeof(float)
 #define RADIO_ANT_QUERY_IDX							0x13
+//Get RSSI Reading
+#define RADIO_GET_RSSI_IDX		0x32
 
 typedef struct  {
 	uint8_t  /*MODEM_PEND*/RSSI_COMP; /*compensation offset*/

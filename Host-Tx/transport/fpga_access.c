@@ -24,9 +24,9 @@
 #define false													0
 //#define print_usage                    puts("lgdst 0 tx/rx [Vn/Vf]/[Vc]/Va/[Uc]/[Uf]/ns/s/wbs/ws/wb/w/rb/r/pair-id/[locked]/Cst/MDst/Cch/[rfch]/[atten]/temp/ctune ctrl-ch/fpath/adr [chidx] [atten] [bsz] [val0,val1,...], all numbers are in hex");
 #ifdef DBG_BOOTSTRAP_BYPASS
-  #define print_usage                    puts("lgdst 0 tx bm/[Vn/Vf]/Va/fbm/[Uf/0]/ns/s/wbs/ws/wb/w/rb/r/pair-id/pair-locked/loc-gps/ant-qry/droneyaw/camyaw/[locked]/Cst/MDst/[rfch]/[atten][tg]/temp/ctune/calib/calib-qry/hopless fpath/adr [chidx] [atten] [bsz] [val0,val1,...], all numbers are in hex");
+  #define print_usage                    puts("lgdst 0 tx bm/[Vn/Vf]/Va/fbm/[Uf/0]/ns/s/wbs/ws/wb/w/rb/r/pair-id/pair-locked/loc-gps/ant-qry/droneyaw/camyaw/[locked]/Cst/MDst/[rfch]/[atten][tg]/temp/ctune/calib/calib-qry/hopless/RSSI fpath/adr [chidx] [atten] [bsz] [val0,val1,...], all numbers are in hex");
 #else
-  #define print_usage                    puts("lgdst 0 tx [Vn/Vf]/Va/fbm/[Uf/0]/ns/s/wbs/ws/wb/w/rb/r/pair-id/pair-locked/loc-gps/ant-qry/droneyaw/camyaw/[locked]/Cst/MDst/[rfch]/[atten][tg]/temp/ctune/calib/calib-qry/hopless fpath/adr [chidx] [atten] [bsz] [val0,val1,...], all numbers are in hex");
+  #define print_usage                    puts("lgdst 0 tx [Vn/Vf]/Va/fbm/[Uf/0]/ns/s/wbs/ws/wb/w/rb/r/pair-id/pair-locked/loc-gps/ant-qry/droneyaw/camyaw/[locked]/Cst/MDst/[rfch]/[atten][tg]/temp/ctune/calib/calib-qry/hopless/RSSI fpath/adr [chidx] [atten] [bsz] [val0,val1,...], all numbers are in hex");
 #endif
 #define RAED_SETUP	\
 							shmLgdst_proc->type = ACS; \
@@ -287,7 +287,8 @@ static void ctrl_chsel_func(int entry) {
 			strcasecmp(argv[3],"loc-gps")&&
 			strcasecmp(argv[3],"droneyaw")&&
 			strcasecmp(argv[3],"camyaw")&&
-			strcasecmp(argv[3],"ant-qry")))
+			strcasecmp(argv[3],"ant-qry")&&
+			strcasecmp(argv[3],"RSSI")))
 			{
     	  	  	puts("invalid access mode...");
 					print_usage
@@ -736,6 +737,7 @@ static void ctrl_chsel_func(int entry) {
 					memcpy(shmLgdst_proc->access.hdr.data, &yaw, CAMERA_YAW_LEN);
 
 			    }
+
 			    else if (!strcasecmp(argv[3],"ant-qry")){
 				puts("Getting active antenna\n");
 			    	shmLgdst_proc->type = CMD1;
@@ -743,8 +745,15 @@ static void ctrl_chsel_func(int entry) {
 					shmLgdst_proc->len = sizeof(*acs->data);
 					shmLgdst_proc->tag.wValue = RADIO_COMM_VAL;
 					shmLgdst_proc->tag.wIndex = RADIO_ANT_QUERY_IDX;
+			    }
 
-
+			    else if (!strcasecmp(argv[3],"RSSI")){
+					puts("Getting RSSI\n");
+			    	shmLgdst_proc->type = CMD1;
+					shmLgdst_proc->tag.wDir = CTRL_IN;
+					shmLgdst_proc->len =4;
+					shmLgdst_proc->tag.wValue = RADIO_COMM_VAL;
+					shmLgdst_proc->tag.wIndex = RADIO_GET_RSSI_IDX;
 			    }
 				goto _read;
 			}
@@ -1121,6 +1130,13 @@ _read:
 				bool right_ant = (bool) val;
 				printf("Raw Selected_Antenna value: %i\n", val);
 				printf("The selected antenna is on the %s\n", right_ant?"right": "left");
+			}
+			else if (!strcasecmp(argv[3], "RSSI")){
+				uint8_t* val = (uint8_t*)acs->data;
+				printf("Latched RSSI Value: %u\n", *val);
+				printf("FRR B: %u\n", *(val+1));
+				printf("FRR C:%u\n", *(val+2));
+				printf("FRR D:%u\n", *(val+3));
 			}
      }
    #endif

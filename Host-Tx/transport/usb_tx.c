@@ -27,6 +27,9 @@
 
 #include <libusb.h>
 #include <assert.h>
+
+#include "usb_tx.h"  // definitions for host/fpga access @ tx
+#include "radio_link_quality.h"
 #define true														1
 #define false														0
 
@@ -39,7 +42,6 @@ char upgrade_fwm_path[160]; // upgrade firmware path
   #define CTRL_OUT		(LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_ENDPOINT_OUT)
   #define CTRL_IN		(LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_ENDPOINT_IN)
   #define USB_RQ			0x04
- #include "usb_tx.h"  // definitions for host/fpga access @ tx
  int shmid_Lgdst = -1;
  volatile ipcLgdst *shmLgdst_proc = 0;
  #ifdef RADIO_SI4463

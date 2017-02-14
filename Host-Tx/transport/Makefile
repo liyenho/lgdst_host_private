@@ -64,7 +64,7 @@ ifeq "$(REC)"	"1"
 endif
 endif
 
-SRC_USBTX = usb_tx.c timer.c
+SRC_USBTX = usb_tx.c timer.c radio_link_quality.c
 dep.usbtx: ${SRC_USBTX}
 	@echo "Creating USB TX dependencies..."
 	for i in ${SRC_USBTX}; do \
