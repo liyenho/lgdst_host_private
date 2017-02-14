@@ -88,6 +88,9 @@ enum access_mode {
 #define USB_CPLD_UPGRADE_VAL				0x21  // cpld upgrade cmd
 #define USB_FPGA_UPGRADE_VAL				0x22  // fpga upgrade cmd
 #define USB_ATMEL_UPGRADE_VAL			0x23	// atmel upgrade cmd
+// these two cmds  are for starting or stopping TS record
+#define USB_SAVE_TS_VAL									0xf1
+#define USB_UNSAVE_TS_VAL							0x1f
 #define USB_STREAM_OFF_VAL						0xa
 #define USB_STREAM_ON_VAL						0xe
 #define USB_RX_TUNE_VAL						0xf

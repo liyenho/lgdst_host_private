@@ -17,7 +17,7 @@
 
 #define true													1
 #define false													0
-#define print_usage                    puts("lgdst 0 rx [Vc]/Va/[Uc]/ns/s/wbs/ws/wb/w/rb/r/[vscan]/[retune]/[recv]/[sig]/[locked]/[rfch]/temp/ctune/ fpath/adr [chidx] [bsz] [val0,val1,...], all numbers are in hex");
+#define print_usage                    puts("lgdst 0 rx [Vc]/Va/[Uc]/ns/s/wbs/ws/wb/w/rb/r/[vscan]/[retune]/[recv]/[sig]/[locked]/[rfch]/temp/ctune/rec/stop_rec fpath/adr [chidx] [bsz] [val0,val1,...], all numbers are in hex");
 #define RAED_SETUP	\
 							shmLgdst_proc->type = ACS; \
 							shmLgdst_proc->tag.wDir = CTRL_OUT; \
@@ -290,7 +290,9 @@ static void read_video_short_rx(dev_access *acs) {
 	        strcasecmp(argv[3],"Vc") /*cpld*/&&
 	        strcasecmp(argv[3],"Va") /*atmel*/&&
 	        strcasecmp(argv[3],"temp") &&
-	        strcasecmp(argv[3],"ctune")))
+	        strcasecmp(argv[3],"ctune") &&
+	        strcasecmp(argv[3],"rec") &&
+	        strcasecmp(argv[3],"stop_rec")))
 			{
     	  	  	puts("invalid access mode...");
 					print_usage
@@ -432,6 +434,27 @@ static void read_video_short_rx(dev_access *acs) {
 				shmLgdst_proc->tag.wIndex = RADIO_CTUNE_IDX;
 				memcpy(shmLgdst_proc->access.hdr.data, &tmp, RADIO_CTUNE_LEN);
 				goto _read;
+			}
+			else if (!strcasecmp(argv[3],"rec")) {
+				if (5 != argc) {
+					perror_exit("invalid command line parameters given, lgdst 0 rx rec video-ts-path",-4);
+				}
+				shmLgdst_proc->type = CMD1;
+				shmLgdst_proc->len = ((HOST_BUFFER_SIZE*2)<(strlen(argv[4])+1))?(HOST_BUFFER_SIZE*2):(strlen(argv[4])+1);
+				shmLgdst_proc->tag.wDir = CTRL_OUT;
+				shmLgdst_proc->tag.wValue = USB_SAVE_TS_VAL;
+				shmLgdst_proc->tag.wIndex = USB_HOST_MSG_IDX;
+				char *pc = (char*)shmLgdst_proc->access.hdr.data;
+				for (i=0; i<shmLgdst_proc->len-1; i++) {
+					*pc++ = argv[4][i];
+				} *pc = 0x0;
+					goto _read;
+			}
+			else if (!strcasecmp(argv[3],"stop_rec")) {
+				shmLgdst_proc->type = CMD0;
+				shmLgdst_proc->tag.wValue = USB_UNSAVE_TS_VAL;
+				shmLgdst_proc->tag.wIndex = USB_STREAM_IDX;
+				goto _read ;
 			}
     	  else if (!strcasecmp(argv[3],"wb") ||!strcasecmp(argv[3],"wbs")) {
     	  	 	acs->access = BURST_MEM_WRITE;
