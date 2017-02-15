@@ -8,7 +8,7 @@
 #define SHMKEY_TX 1234	 //tx shared memory key for IPC between lgdst/core
 #define SHMKEY_RX 5678	 //rx shared memory key for IPC between lgdst/core
 #define NON_NIOS
-typedef int bool;
+#include <stdbool.h>
 
 #define HOST_BUFFER_SIZE						(128-1) // max data len-1
 enum TYPE {
