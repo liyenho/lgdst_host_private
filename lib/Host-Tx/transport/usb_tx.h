@@ -147,6 +147,7 @@ enum access_mode {
 	 struct {
 		 uint16_t chan_idx;
 		 uint16_t pwr_att;
+		 uint16_t tone_on; // tone generation, 1: turn on, 0: turn off
 	 } params_tx;
 	 struct {
 		 dev_cfg *pregs_6612;
