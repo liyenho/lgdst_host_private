@@ -546,12 +546,12 @@ static bool open_ini(int *setting_ch,int *setting_pwr)
 	FILE *fp = NULL;
         char ini_buff[120];
 
-        fp = fopen("usb_tx.ini", "r+");
+        fp = fopen("usb_tx.ini.h", "r+");
 	if (fp == NULL) {
 	  // File doesn't exist, setup ini with default
-       	  fp = fopen("usb_tx.ini", "w+");
+       	  fp = fopen("usb_tx.ini.h", "w+");
 	  if (fp == NULL) {
-		printf("ERROR: Fail to create 'usb_tx.ini' !!");
+		printf("ERROR: Fail to create 'usb_tx.ini.h' !!");
 		return false;
 	  }
 	  fprintf(fp, "TX_CH=%d\n", *setting_ch);
