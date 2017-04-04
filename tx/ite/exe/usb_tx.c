@@ -612,11 +612,9 @@ upgrade_next:
 	if (SIG_ERR == signal(SIGINT, sigint_handler)) {
 		perror("FAIL: assigning signal handler");
 	}
-
 	r = pthread_create(&lgdst_thread, NULL, lgdst_thread_main, NULL);
 	if (0 != r)
 		perror_exit("lgdst thread creation error", r);
-
 
 	return 0;
 
@@ -960,10 +958,13 @@ int main(int argc,char **argv)
 #if 0 // never use this option, can't do upgrade
 	init_device();
 #else
+printf("line # = %d\n", __LINE__);
 	init_device(argc, argv);
+printf("line # = %d\n", __LINE__);
  	uint32_t n, size, blksz, fw_info[3+1]; /*len = SMS_FW_HDR_LEN*/
  	float delay ;
   if (system_upgrade) { // user request firmware upgrade
+printf("line # = %d\n", __LINE__);
   	FILE *file_up ;
   	int end, cur, len;
   	bool first_file = true;
@@ -1206,8 +1207,9 @@ download:
   	return 0;
   }
 #endif
+printf("line # = %d\n", __LINE__);
 	init_rf2072();
-
+printf("line # = %d\n", __LINE__);
 	udpin_init();
 
 	error=it9517_initialize (Bus_I2C,SERIAL_TS_INPUT);
