@@ -92,7 +92,7 @@ static int udpout_init(char* udpaddr)
       }
 			get_time(&tend);
 			time_diff(&tend, &tstart, &tdelta);
-			if (compare_time(&tdelta,&loop)<0) {
+			if (compare_time(&tdelta,&loop)>0) {
 				lgdst_vid_stats_rx();
 				tstart = tend;
 			}
@@ -207,7 +207,7 @@ int main(int argc, char **argv)
 		puts("Finished starting threads");
 		sleep(5);
 		puts("Starting pair-id cmd");
-		send_pair_id_cmd();
+//		send_pair_id_cmd(); // for debug, liyenho
 
 		struct timeval tstart,tend,tdelta;
 		const struct timeval lfoop= {600, 0}; // 10 min run time
