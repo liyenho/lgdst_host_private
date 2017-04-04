@@ -207,7 +207,7 @@ int main(int argc, char **argv)
 		puts("Finished starting threads");
 		sleep(5);
 		puts("Starting pair-id cmd");
-//		send_pair_id_cmd(); // for debug, liyenho
+		send_pair_id_cmd();
 
 		struct timeval tstart,tend,tdelta;
 		const struct timeval lfoop= {600, 0}; // 10 min run time
