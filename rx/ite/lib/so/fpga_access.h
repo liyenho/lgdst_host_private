@@ -1,6 +1,6 @@
 //#define TEST_BITSTREAM
-#define SHMKEY_TX 1234	 //tx shared memory key for IPC between lgdst/core
-#define SHMKEY_RX 5678	 //rx shared memory key for IPC between lgdst/core
+#define SHMKEY_TX 								1234	 //tx shared memory key for IPC between lgdst/core
+#define SHMKEY_RX 								5678	 //rx shared memory key for IPC between lgdst/core
 #define HOST_BUFFER_SIZE						(256-1) // max data len-1
 typedef int bool;  // match definition in usb_core.h
 
@@ -10,20 +10,23 @@ enum TYPE {
 	ACS, 	/*regs access*/
 };
 typedef struct {
-	/*enum access_mode*/uint8_t access;
+	uint8_t access;
 	uint8_t dcnt;	// data count
-	uint16_t addr;	// first access address, 12 bit
+	uint16_t addr;	// first access address
 	uint8_t data[1]; // only valid on lower half
 } dev_access;
+
 typedef struct {
 	dev_access hdr;
 	uint8_t data[HOST_BUFFER_SIZE];
 } dAccess; // dev access of ctrl xfer
+
 typedef struct {
 	uint16_t  wDir;  // usb direction
 	uint16_t  wValue;
 	uint16_t  wIndex;
 } uTag; // usb tags of ctrl xfer
+
 typedef struct {
 	int active;
 	bool echo;
@@ -45,23 +48,24 @@ typedef enum {
 
 #define USB_ATMEL_VER_VAL								0x20
 #define USB_BOOT_APP_VAL								0xa4
-#define USB_CPLD_UPGRADE_VAL				0x21  // cpld upgrade cmd
-#define USB_ATMEL_UPGRADE_VAL			0x23	// atmel upgrade cmd
-#define USB_STREAM_OFF_VAL						0xa
-#define USB_STREAM_ON_VAL						0xe
-#define USB_RX_TUNE_VAL						0xf
-  #define USB_STREAM_IDX						0x1	// data instead comm interface
-  #define USB_STREAM_LEN						0
+#define USB_CPLD_UPGRADE_VAL							0x21  // cpld upgrade cmd
+#define USB_ATMEL_UPGRADE_VAL							0x23	// atmel upgrade cmd
+#define USB_STREAM_OFF_VAL								0xa
+#define USB_STREAM_ON_VAL								0xe
+#define USB_STREAM_IDX									0x1	// data instead comm interface
+#define USB_STREAM_LEN									0
+#define USB_ANT_SW_VAL										0xf
 
 // !Si446x status monitor parameters
-#define CTRL_BITS				2
-#define CTRL_CTX_LEN	(5-1)
+#define CTRL_BITS										2
+#define CTRL_CTX_LEN									(5-1)
 typedef enum {
 	NEUTRAL = 0,
 	LONG_RNG = 1,
 	SHORT_RNG = 2,
 	RESERVED = 3,
 } BW_CTRL;
+
 typedef struct {
 	unsigned int bw_ctrl_bits;
 	unsigned int ctrl_bits_ctx[CTRL_CTX_LEN];
@@ -69,25 +73,33 @@ typedef struct {
 	unsigned int loop_cnt; // monitor pckt recv period
 } ctrl_radio_stats;
 
-#define RADIO_COMM_VAL								0x10
-#define RADIO_CAL_IDX										0x1
-#define RADIO_CAL_DONE_IDX 		 			0xc	// user query cmd index on cap value tuning process
-#define RADIO_STATS_IDX								0x5
-#define RADIO_STATS_LEN							sizeof(ctrl_radio_stats)
-#define RADIO_HOPLESS_IDX							0xd
-#define HOP_ID_LEN									10
+#define RADIO_COMM_VAL									0x10
+#define RADIO_CAL_IDX									0x1
+#define RADIO_CAL_DONE_IDX 		 						0xc	// user query cmd index on cap value tuning process
+#define RADIO_STATS_IDX									0x5
+#define RADIO_STATS_LEN									sizeof(ctrl_radio_stats)
+#define RADIO_HOPLESS_IDX								0xd
+#define HOP_ID_LEN										10
 // pairing operation IDs
-#define RADIO_PAIRID_IDX							0xa
-#define RADIO_PAIR_LOCKED_IDX 					    0xb
-#define RADIO_PAIR_LOCKED_LEN		  			    4 /*boolean*/
-//directional antenna selection
-#define DRONE_GPS_IDX								0x10
-#define DRONE_GPS_LEN								2*sizeof(float)
-#define DRONE_YAW_IDX								0x11
-#define DRONE_YAW_LEN								sizeof(float)
-#define CAMERA_YAW_IDX								0x12
-#define CAMERA_YAW_LEN								sizeof(float)
-#define RADIO_ANT_QUERY_IDX							0x13
+#define RADIO_PAIRID_IDX								0xa
+#define RADIO_PAIR_LOCKED_IDX 							0xb
+#define RADIO_PAIR_LOCKED_LEN							4 /*boolean*/
+//Set Base Station GPS
+#define BASE_GPS_IDX 									0xe
+#define BASE_GPS_LEN									2*sizeof(float)
+
+//Turn FEC On, Off, or Auto
+#define SET_FEC_IDX										0x10
+#define SET_FEC_LEN										sizeof(uint8_t)
+
+//Get Si4463 Properties
+#define RADIO_GET_PROPERTY_IDX							0x30
+#define RADIO_GET_PROPERTY_HOST_LEN						3		//length of host query
+#define RADIO_GET_PROPERTY_REPLY_IDX					0x31
+#define RADIO_GET_PROPERTY_ATMEL_LEN					16		//length of atmel response
+
+//Get RSSI Reading
+#define RADIO_GET_RSSI_IDX								0x32
 
 typedef struct  {
 	uint8_t  /*MODEM_PEND*/RSSI_COMP; /*compensation offset*/
@@ -99,17 +111,15 @@ typedef struct  {
 	uint16_t  AFC_FREQ_OFFSET;
 } si446x_get_modem_status;
 
-#define RADIO_MODEM_IDX								0x6
-#define RADIO_MODEM_LEN							sizeof(si446x_get_modem_status)
+#define RADIO_MODEM_IDX									0x6
+#define RADIO_MODEM_LEN									sizeof(si446x_get_modem_status)
 
-#define USB_HOST_MSG_TX_VAL						0x5
-#define USB_HOST_MSG_RX_VAL						0x9
-  #define USB_HOST_MSG_IDX						0x1	// data instead comm interface
-  #define USB_HOST_MSG_LEN						sizeof(dev_access)
+#define USB_HOST_MSG_TX_VAL								0x5
 
-#define DBG_BOOTSTRAP_BYPASS
-#define DBG_CTRL_PAIRING
-#ifdef DBG_CTRL_PAIRING
+#define USB_HOST_MSG_RX_VAL								0x9
+  #define USB_HOST_MSG_IDX								0x1	// data instead comm interface
+  #define USB_HOST_MSG_LEN								sizeof(dev_access)
+
 // !Si446x RF Channel definitions in 25.5 mhz range divided into 14 bands of 3.43 mhz wide,
 // each band contains 50 hopping channels in 70 khz separation, all calculations are based
 // upon 32 mhz reference crystal
@@ -174,19 +184,33 @@ const uint8_t *chtbl_ctrl_rdo[/*14*2*/] = {
 	 RF_MODEM_AFC_LIMITER_BAND13_3,
 } ;
 
-#define RADIO_CHSEL_IDX								0x7
-#define RADIO_CHSEL_LEN0							sizeof(RF_FREQ_CONTROL_INTE_BAND0_6)
-#define RADIO_CHSEL_LEN1							sizeof(RF_MODEM_AFC_LIMITER_BAND0_3)
+#define RADIO_CHSEL_IDX												0x7
+#define RADIO_CHSEL_LEN0											sizeof(RF_FREQ_CONTROL_INTE_BAND0_6)
+#define RADIO_CHSEL_LEN1											sizeof(RF_MODEM_AFC_LIMITER_BAND0_3)
 
 const uint8_t *chtbl_ctrl_len[/*2*/] = {
 	RADIO_CHSEL_LEN0,
 	RADIO_CHSEL_LEN1,
 } ;
-#endif
 
-#define RADIO_TEMP_IDX									0x8
-#define RADIO_TEMP_LEN								sizeof(int16_t)
-#define RADIO_CTUNE_IDX								0x9
-#define RADIO_CTUNE_LEN							sizeof(uint8_t)
+#define RADIO_TEMP_IDX												0x8
+#define RADIO_TEMP_LEN												sizeof(int16_t)
+#define RADIO_CTUNE_IDX												0x9
+#define RADIO_CTUNE_LEN												sizeof(uint8_t)
 
- #include "RFFC2072_set.h"
+//Commands
+#define MDst 		"MDst"
+#define tempCMD  	"temp"
+#define calibqry 	"calib-qry"
+#define ctune 		"ctune"
+#define calib 		"calib"
+#define hopless 	"hopless"
+#define pairID 		"pair-id"
+#define pairLocked  "pair-locked"
+#define locGPS 		"loc-gps"
+#define RSSI 		"RSSI"
+#define SiGetProp	"SiGetProp"
+#define setFEC		"setFEC"
+#define ant_sw		"ant-sw"
+
+#include "rf2072_set.h"

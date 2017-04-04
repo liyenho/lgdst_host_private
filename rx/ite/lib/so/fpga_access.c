@@ -4,34 +4,35 @@
 #include <unistd.h>
 #include <errno.h>
 #include <signal.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/fcntl.h>
 #include <sys/ioctl.h>
 #include <math.h>
 #include <libusb.h>
-#include <assert.h>
+#include "fpga_access.h"  // definitions for host/fpga access @ tx
 
- #define CTRL_OUT		(LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_ENDPOINT_OUT)
- #define CTRL_IN		(LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_ENDPOINT_IN)
+#define CTRL_OUT							(LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_ENDPOINT_OUT)
+#define CTRL_IN								(LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_ENDPOINT_IN)
 
-  #include "fpga_access.h"  // definitions for host/fpga access @ tx
-  #define COMM_ATMEL_DEV // enable atmel<->fpga/6612 comm test
+#define COMM_ATMEL_DEV // enable atmel<->fpga/6612 comm test
 
-#define true													1
-#define false													0
-  #define print_usage                    puts("lgdst 0 tx bm/Va/ns/s/pair-id/pair-locked/loc-gps/ant-qry/droneyaw/camyaw/MDst/temp/ctune/calib/calib-qry/hopless fpath [chidx] [bsz] [val0,val1,...], all numbers are in hex");
+#define true								1
+#define false								0
+#define print_usage                    puts("lgdst 0 rx bm/Va/[Uc]/ns/s/pair-id/pair-locked/loc-gps/MDst/temp/ctune/calib/calib-qry/hopless/setFEC/SiGetProp/RSSI/ant-sw fpath [chidx] [bsz] [val0,val1,...], all numbers are in hex");
 #define RAED_SETUP	\
 							shmLgdst_proc->type = ACS; \
 							shmLgdst_proc->tag.wDir = CTRL_OUT; \
 							shmLgdst_proc->tag.wValue = USB_HOST_MSG_TX_VAL; \
-							shmLgdst_proc->tag.wIndex = USB_HOST_MSG_IDX;
+							shmLgdst_proc->tag.wIndex = USB_HOST_MSG_IDX; \
+    	  	 				goto _read;
 typedef int bool;
 
+#ifdef LIB
+ extern volatile ipcLgdst *shmLgdst_proc;
+#else
  int shmid_Lgdst = -1;
  volatile ipcLgdst *shmLgdst_proc = 0;
+#endif
 static volatile int do_exit = 0;	// main loop breaker
 static bool work_mode = (bool)-1;
 
@@ -96,6 +97,7 @@ static int htoi(char s[])
     }
     return n;
 }
+
 static void print_ctrl_bits(BW_CTRL x, char *t) {
 	switch(x) {
 		case NEUTRAL:
@@ -129,7 +131,7 @@ static void ctrl_chsel_func(int entry) {
 }
 
 #ifdef LIB
-  int lgdst_access_tx(int argc,char **argv)
+  int lgdst_access_rx(int argc,char **argv, void **ret)
 #else
   int main(int argc,char **argv)
 #endif
@@ -171,7 +173,7 @@ static void ctrl_chsel_func(int entry) {
                                 struct timeval *diffTime);
   extern int get_time(struct timeval *time);
     extern int short_sleep(double sleep_time);
-  	static int32_t sz, fc, adr, tmp; // access buffer
+  	static int32_t sz, fc, tmp; // access buffer
 
   	dev_access *acs = (dev_access*)&shmLgdst_proc->access.hdr;
 	while(-1 != shmLgdst_proc->active);
@@ -180,28 +182,25 @@ static void ctrl_chsel_func(int entry) {
    #ifdef COMM_ATMEL_DEV
      { 	// prepend access header
 			if (3+1>argc ||(strcasecmp(argv[3],"ns") && strcasecmp(argv[3],"s") &&
-	        /*strcasecmp(argv[3],"tg") &&*/ // carrier tone generation, tx specific
 	        strcasecmp(argv[3],"Uc") /*cpld*/&&
-#ifdef DBG_BOOTSTRAP_BYPASS
-	        strcasecmp(argv[3],"bm") /*atm boot mode*/&&
-#endif
 	        strcasecmp(argv[3],"Ua") /*atmel*/&&
 	        /*strcasecmp(argv[3],"Vc") &&*/ /*cpld*/
 	        strcasecmp(argv[3],"Va") /*atmel*/&&
+			  strcasecmp(argv[3],"bm") /*atm boot mode*/&&
 	        /*strcasecmp(argv[3],"Cst") &&*/
-	        strcasecmp(argv[3],"MDst") &&
+	        strcasecmp(argv[3], MDst) &&
 	        /*strcasecmp(argv[3],"Cch") &&*/
-	        strcasecmp(argv[3],"temp") &&
-	        strcasecmp(argv[3],"ctune") &&
-	        strcasecmp(argv[3],"calib") &&
-	        strcasecmp(argv[3],"calib-qry") &&
-	        strcasecmp(argv[3],"hopless") &&
-	        strcasecmp(argv[3],"pair-id") &&
-	        strcasecmp(argv[3],"pair-locked")&&
-			strcasecmp(argv[3],"loc-gps")&&
-			strcasecmp(argv[3],"droneyaw")&&
-			strcasecmp(argv[3],"camyaw")&&
-			strcasecmp(argv[3],"ant-qry")))
+	        strcasecmp(argv[3], tempCMD) &&
+	        strcasecmp(argv[3],	ctune) &&
+	        strcasecmp(argv[3], calib) &&
+	        strcasecmp(argv[3], calibqry) &&
+	        strcasecmp(argv[3], hopless) &&
+	        strcasecmp(argv[3], pairID) &&
+	        strcasecmp(argv[3], pairLocked)&&
+			strcasecmp(argv[3], locGPS)&&
+			strcasecmp(argv[3], RSSI)&&
+			strcasecmp(argv[3], SiGetProp)&&
+			strcasecmp(argv[3], ant_sw)))
 			{
     	  	  	puts("invalid access mode...");
 					print_usage
@@ -214,34 +213,37 @@ static void ctrl_chsel_func(int entry) {
 				shmLgdst_proc->tag.wValue = RADIO_COMM_VAL;
 				shmLgdst_proc->tag.wIndex = RADIO_STATS_IDX;
 			}
-			else if (!strcasecmp(argv[3],"MDst")) { // control modem states readout
+			else if (!strcasecmp(argv[3], MDst)) { // control modem states readout
 				shmLgdst_proc->type = CMD1;
 				shmLgdst_proc->len = RADIO_MODEM_LEN;
 				shmLgdst_proc->tag.wDir = CTRL_IN;
 				shmLgdst_proc->tag.wValue = RADIO_COMM_VAL;
 				shmLgdst_proc->tag.wIndex = RADIO_MODEM_IDX;
 			}
-#ifdef DBG_CTRL_PAIRING
-			else if (!strcasecmp(argv[3],"Cch")) { // control RF channel selection
+			else if (!strcasecmp(argv[3], ant_sw)) { // toggle video antenna pair on drone
+				shmLgdst_proc->type = CMD0;
+				shmLgdst_proc->tag.wValue = USB_ANT_SW_VAL;
+				shmLgdst_proc->tag.wIndex = 0x1; // current cdc data interface
+			}
+			else if (false/*rx*/==work_mode && !strcasecmp(argv[3],"Cch")) { // control RF channel selection
 				uint8_t *ch_param = NULL;
 				int ch_sel = htoi(argv[4]);
 				if (5 != argc) {
-					perror_exit("invalid command line parameters, lgdst 0 tx Cch ctrl-ch#",-5);
+					perror_exit("invalid command line parameters, lgdst 0 rx Cch ctrl-ch#",-5);
 				} else if (0>ch_sel || sizeof(chtbl_ctrl_rdo)/sizeof(ch_param)<= 2*ch_sel) {
 						perror_exit("invalid channel #, beyond available ch or negative",-6);
 					}
 				ctrl_chsel_func(ch_sel) ;
 				goto _exit0;
 			}
-#endif
-			else if (!strcasecmp(argv[3],"temp")) { // // control radio temperature readout
+			else if (!strcasecmp(argv[3], tempCMD)) { // // control radio temperature readout
 				shmLgdst_proc->type = CMD1;
 				shmLgdst_proc->len = RADIO_TEMP_LEN;
 				shmLgdst_proc->tag.wDir = CTRL_IN;
 				shmLgdst_proc->tag.wValue = RADIO_COMM_VAL;
 				shmLgdst_proc->tag.wIndex = RADIO_TEMP_IDX;
 			}
-			else if (!strcasecmp(argv[3],"ctune")) { // tune cap bank on ctrl radio chip
+			else if (!strcasecmp(argv[3], ctune)) { // tune cap bank on ctrl radio chip
 	    	  tmp = htoi(argv[4]);
 	    	  if (0>tmp || 127<tmp) {
  					puts("invalid capacitor bank tuning value...");
@@ -253,18 +255,7 @@ static void ctrl_chsel_func(int entry) {
 				shmLgdst_proc->tag.wIndex = RADIO_CTUNE_IDX;
 				memcpy(shmLgdst_proc->access.hdr.data, &tmp, RADIO_CTUNE_LEN);
 			}
-#if false
-	    else if ((true/*Tx*/==work_mode) && !strcasecmp(argv[3],"tg")) {
-    	  	 	Rf_Params.params_tx.tone_on = htoi(argv[4]); // 0 or 1
-				shmLgdst_proc->type = CMD1;
-				shmLgdst_proc->len = sizeof(Rf_Params.params_tx);
-				shmLgdst_proc->tag.wDir = CTRL_OUT;
-				shmLgdst_proc->tag.wValue = RF_TX_CARRIER;
-				shmLgdst_proc->tag.wIndex = USB_HOST_MSG_IDX;
-				memcpy(shmLgdst_proc->access.hdr.data, &Rf_Params.params_tx, sizeof(Rf_Params.params_tx));
-		}
-#endif
-			else if (!strcasecmp(argv[3],"pair-id")) {
+			else if (!strcasecmp(argv[3], pairID)) {
 				if (4+HOP_ID_LEN > argc) {
 					puts("invalid params, missing 10 byte ID...");
 					goto _exit;
@@ -274,26 +265,26 @@ static void ctrl_chsel_func(int entry) {
 				shmLgdst_proc->tag.wDir = CTRL_OUT;
 				shmLgdst_proc->tag.wValue = RADIO_COMM_VAL;
 				shmLgdst_proc->tag.wIndex = RADIO_PAIRID_IDX;
-        	  char *pc = (char*)shmLgdst_proc->access.hdr.data;
+        	 char *pc = (char*)shmLgdst_proc->access.hdr.data;
 				for (i=0; i<shmLgdst_proc->len; i++) {
 					*pc++ = htoi(argv[4+i]);
 				} *pc = 0x0;
+   				 puts("pairid called"); // liyenho
 			}
-			else if (!strcasecmp(argv[3],"pair-locked")) {
+			else if (!strcasecmp(argv[3], pairLocked)) {
 				shmLgdst_proc->type = CMD1;
 				shmLgdst_proc->len = RADIO_PAIR_LOCKED_LEN;
 				shmLgdst_proc->tag.wDir = CTRL_IN;
 				shmLgdst_proc->tag.wValue = RADIO_COMM_VAL;
 				shmLgdst_proc->tag.wIndex = RADIO_PAIR_LOCKED_IDX;
 			}
-#ifdef DBG_BOOTSTRAP_BYPASS
 			else if (!strcasecmp(argv[3],"bm")) {
-				if (5 != argc ) {
-					perror_exit("lgdst 0 tx bm 1/0 (1:to main, 0:upgrade)",-7);
+				if (5 != argc) {
+					perror_exit("lgdst 0 rx bm 1/0 (1:to main, 0:upgrade)",-7);
 				}
-				uint8_t mode = htoi(argv[4]);
+				uint8_t mode = atoi(argv[4]);
 				if (1!=mode && 0!=mode) {
-					perror_exit(" lgdst 0 tx bm 1/0 (1:to main, 0:upgrade)",-7);
+					perror_exit("lgdst 0 rx bm 1/0 (1:to main, 0:upgrade)",-7);
 				}
 				shmLgdst_proc->type = CMD1;
 				shmLgdst_proc->len = sizeof(mode);
@@ -303,10 +294,9 @@ static void ctrl_chsel_func(int entry) {
 				char *pc = (char*)shmLgdst_proc->access.hdr.data;
 					*pc = mode;
 			}
-#endif
 			else if (!strcasecmp(argv[3],"Ua")) {
 				if (5 != argc) {
-					perror_exit("invalid command line parameters, lgdst 0 tx Ua bin-file-path",-3);
+					perror_exit("invalid command line parameters, lgdst 0 rx Ua bin-file-path",-3);
 				}
 				shmLgdst_proc->type = CMD1;
 				shmLgdst_proc->len = ((HOST_BUFFER_SIZE*2)<(strlen(argv[4])+1))?(HOST_BUFFER_SIZE*2):(strlen(argv[4])+1);
@@ -354,7 +344,7 @@ static void ctrl_chsel_func(int entry) {
 						shmLgdst_proc->tag.wIndex = USB_STREAM_IDX;
 					}
 				}
-				else if (!strcasecmp(argv[3],"calib")) { // factory cap value calibration for frequency correction
+				else if (!strcasecmp(argv[3], calib)) { // factory cap value calibration for frequency correction
 					shmLgdst_proc->type = CMD0;
 					shmLgdst_proc->tag.wValue = RADIO_COMM_VAL;
 					shmLgdst_proc->tag.wIndex = RADIO_CAL_IDX;
@@ -366,17 +356,17 @@ static void ctrl_chsel_func(int entry) {
 					shmLgdst_proc->tag.wValue = USB_ATMEL_VER_VAL;
 					shmLgdst_proc->tag.wIndex = USB_HOST_MSG_IDX;
 				}
-				else if (!strcasecmp(argv[3],"calib-qry")) { // query result of factory cap value calibration
+				else if (!strcasecmp(argv[3], calibqry)) { // query result of factory cap value calibration
 					shmLgdst_proc->type = CMD1;
 					shmLgdst_proc->tag.wDir = CTRL_IN;
 					shmLgdst_proc->len = 2*sizeof(*acs->data); // boolean var + cbv value
 					shmLgdst_proc->tag.wValue = RADIO_COMM_VAL;
 					shmLgdst_proc->tag.wIndex = RADIO_CAL_DONE_IDX;
 				}
-				else if (!strcasecmp(argv[3],"hopless")) { // special radio mode for FCC test
+				else if (!strcasecmp(argv[3], hopless)) { // special radio mode for FCC test
 		    	  int32_t sect = htoi(argv[4]);
 		    	  if (0>sect || 3<sect) {
-			    		puts("invalid section, 0: disable, 1: low, 2: mid, 3: high");
+			    	 puts("invalid section, 0: disable, 1: low, 2: mid, 3: high");
 			     	goto _exit; }
 					shmLgdst_proc->type = CMD1;
 					shmLgdst_proc->len = sizeof(sect);
@@ -385,8 +375,9 @@ static void ctrl_chsel_func(int entry) {
 					shmLgdst_proc->tag.wIndex = RADIO_HOPLESS_IDX;
 					memcpy(shmLgdst_proc->access.hdr.data, &sect, sizeof(sect));
 				}
-				else if (!strcasecmp(argv[3],"loc-gps")) { // get base station gps
-	    	        if (4+(DRONE_GPS_LEN/sizeof(float)) > argc) {
+				else if (!strcasecmp(argv[3], locGPS)) {
+					// get base station gps
+	    	        if (4+(BASE_GPS_LEN/sizeof(float)) > argc) {
 						puts("Invalid number of params, requires latitude and longitude...");
 						goto _exit;
 					}
@@ -404,69 +395,75 @@ static void ctrl_chsel_func(int entry) {
 		     		}
 
 					shmLgdst_proc->type = CMD1;
-					shmLgdst_proc->len = DRONE_GPS_LEN;
+					shmLgdst_proc->len = BASE_GPS_LEN;
 					shmLgdst_proc->tag.wDir = CTRL_OUT;
 					shmLgdst_proc->tag.wValue = RADIO_COMM_VAL;
-					shmLgdst_proc->tag.wIndex = DRONE_GPS_IDX;
+					shmLgdst_proc->tag.wIndex = BASE_GPS_IDX;
 
  					float *pc = (float*)shmLgdst_proc->access.hdr.data;
-					for (i=0; i<DRONE_GPS_LEN/sizeof(float); i++) {
+					for (i=0; i<BASE_GPS_LEN/sizeof(float); i++) {
 						*pc = atof(argv[4+i]);
 						*pc++;
 					}
 					*pc = 0x0;
-
 			    }
-				else if (!strcasecmp(argv[3],"droneyaw")) { // get drone yaw
-	    	        float yaw = atof(argv[4]);
-	    	        if ( (-360>yaw) || (360<yaw)) {
- 					puts("Invalid drone yaw value, must be within (-360,360)");
-		     		goto _exit; }
-
-
-					shmLgdst_proc->type = CMD1;
-					shmLgdst_proc->len = DRONE_YAW_LEN;
-					shmLgdst_proc->tag.wDir = CTRL_OUT;
-					shmLgdst_proc->tag.wValue = RADIO_COMM_VAL;
-					shmLgdst_proc->tag.wIndex = DRONE_YAW_IDX;
-					memcpy(shmLgdst_proc->access.hdr.data, &yaw, DRONE_YAW_LEN);
-
-			    }
-				else if (!strcasecmp(argv[3],"camyaw")) { // get camera yaw
-	    	        float yaw = atof(argv[4]);
-	    	        if ( (-360>yaw) || (360<yaw)){
- 					puts("Invalid camera yaw value, must be within (-360,360)");
-		     		goto _exit; }
-
-
-					shmLgdst_proc->type = CMD1;
-					shmLgdst_proc->len = CAMERA_YAW_LEN;
-					shmLgdst_proc->tag.wDir = CTRL_OUT;
-					shmLgdst_proc->tag.wValue = RADIO_COMM_VAL;
-					shmLgdst_proc->tag.wIndex = CAMERA_YAW_IDX;
-					memcpy(shmLgdst_proc->access.hdr.data, &yaw, CAMERA_YAW_LEN);
-
-			    }
-			    else if (!strcasecmp(argv[3],"ant-qry")){
-				puts("Getting active antenna\n");
+			      else if (!strcasecmp(argv[3], RSSI)){
+					puts("Getting RSSI\n");
 			    	shmLgdst_proc->type = CMD1;
 					shmLgdst_proc->tag.wDir = CTRL_IN;
-					shmLgdst_proc->len = sizeof(*acs->data);
+					shmLgdst_proc->len =4;
 					shmLgdst_proc->tag.wValue = RADIO_COMM_VAL;
-					shmLgdst_proc->tag.wIndex = RADIO_ANT_QUERY_IDX;
-
-
+					shmLgdst_proc->tag.wIndex = RADIO_GET_RSSI_IDX;
 			    }
+			    else if (!strcasecmp(argv[3], setFEC)){
+					if (4+1 > argc) {
+						puts("invalid params, missing FEC status...");
+						goto _exit;
+					}
+					printf("Setting FEC status\n");
+					uint8_t FEC_option = htoi(argv[4]);
+
+					shmLgdst_proc->type = CMD1;
+					shmLgdst_proc->len = SET_FEC_LEN;
+					shmLgdst_proc->tag.wDir = CTRL_OUT;
+					shmLgdst_proc->tag.wValue = RADIO_COMM_VAL;
+					shmLgdst_proc->tag.wIndex = SET_FEC_IDX;
+					memcpy(shmLgdst_proc->access.hdr.data, &FEC_option, 1);
+				}
+				else if (!strcasecmp(argv[3], SiGetProp)){
+					//get Si4463 properties
+					if (4+3 > argc) {
+						puts("invalid number of params, usuage is SiGetProp group num_props start_idx ");
+						goto _exit;
+					}
+
+					shmLgdst_proc->type = CMD1;
+					shmLgdst_proc->len = RADIO_GET_PROPERTY_HOST_LEN;
+					shmLgdst_proc->tag.wDir = CTRL_OUT;
+					shmLgdst_proc->tag.wValue = RADIO_COMM_VAL;
+					shmLgdst_proc->tag.wIndex = RADIO_GET_PROPERTY_IDX;
+
+					char *pc = (char*)shmLgdst_proc->access.hdr.data;
+					for (i=0; i<shmLgdst_proc->len; i++) {
+						*pc++ = htoi(argv[4+i]);
+					} *pc = 0x0;
+
+					printf("Sending property request to Atmel\n");
+
+				}
+
 			}
      }
 _read:
 	shmLgdst_proc->active = 1;  // wait for transaction complete
 	while (1==shmLgdst_proc->active) ;
 	  {
-	      if (!strcasecmp(argv[3],"pair-locked")) {
+		  if (false/*rx*/==work_mode && !strcasecmp(argv[3], pairLocked)) {
 				  uint8_t *pv = (uint8_t*)acs->data;
 				  printf("Pairing Ctrl-Lock is %s\n", (1==*pv)?"On":"Off");
-		  	}
+				if (ret)
+					*(uint8_t**)ret = pv;
+		  }
 			else if (!strcasecmp(argv[3],"Cst")) {
 				ctrl_radio_stats *pv = (uint8_t*)acs->data;
 				{
@@ -479,8 +476,10 @@ _read:
 		     	 	printf("errPerAcc = %d\n", pv->errPerAcc);
 		     	 	printf("loop_cnt = %d\n", pv->loop_cnt);
 	     	 	}
+				if (ret)
+					*(ctrl_radio_stats**)ret = pv;
 			}
-			else if (!strcasecmp(argv[3],"MDst")) {
+			else if (!strcasecmp(argv[3], MDst)) {
 				si446x_get_modem_status *pv = (uint8_t*)acs->data;
 					//printf("Ctrl Modem Intr pending bits = 0x%02x\n", pv->MODEM_PEND);
 					printf("Ctrl Modem Status bits = 0x%02x\n", pv->MODEM_STATUS);
@@ -493,14 +492,18 @@ _read:
 					int16_t ant2_dBm = pv->ANT2_RSSI/2 - pv->RSSI_COMP - 70;
 					printf("Ctrl Modem RF dBm from antenna 2 = %d\n", ant2_dBm);
 					printf("Ctrl Modem AFC offset = %d\n", pv->AFC_FREQ_OFFSET);
+					if (ret)
+						*(si446x_get_modem_status**)ret = pv;
 			}
-			else if (!strcasecmp(argv[3],"temp")) {
+			else if (!strcasecmp(argv[3], tempCMD)) {
 				int16_t temp, *pv = (int16_t*)acs->data;
 				if (1358<=*pv && 1722>=*pv) {
 					temp = (899.0/4096.0)*(*pv) - 293;
 					printf("current Si4463 temperature = %d C\n", temp);
 				} else
 				puts("current Si4463 temperature reading is bad");
+				if (ret)
+					*(int16_t*)ret = temp;
 			}
 #if false
 		  else if (false/*rx*/==work_mode && !strcasecmp(argv[3],"Vc")) {
@@ -516,12 +519,16 @@ _read:
 		     	 for (i=0; i<1; i++) {
 		   	 	printf("xxxxxx CPLD ver[%d] 0x%02x received xxxxxx\n", i, (uint8_t)acs->data[i]);
 	   	 	}
+				if (ret)
+					*(uint16_t**)ret = acs->data;
 			}
 #endif
 			else if (!strcasecmp(argv[3],"Va")) {
 				uint8_t *pv = (uint8_t*)acs->data;
 		     	 for (i=0; i<shmLgdst_proc->len; i++)
 		   	 	printf("xxxxxx ATMEL ver[%d] 0x%02x received xxxxxx\n", i, pv[i]);
+				if (ret)
+					*(uint16_t**)ret = acs->data;
 			}
 			else if (!strcasecmp(argv[3],"calib-qry")) {
 				bool done = (bool)*(acs->data);
@@ -529,12 +536,35 @@ _read:
 		   		printf("Cap bank tuning process is done, cbv = 0x%02x\n",*(acs->data+1));
 		   	else
 			   	printf("Cap bank tuning process is not done\n");
+				if (ret)
+					*(bool*)ret = done;
 			}
-			else if (!strcasecmp(argv[3], "ant-qry")){
-				uint8_t val = (uint8_t)*acs->data;
-				bool right_ant = (bool) val;
-				printf("Raw Selected_Antenna value: %i\n", val);
-				printf("The selected antenna is on the %s\n", right_ant?"right": "left");
+			else if (!strcasecmp(argv[3], SiGetProp)) {
+
+				shmLgdst_proc->type = CMD1;
+				shmLgdst_proc->len = RADIO_GET_PROPERTY_ATMEL_LEN;
+				shmLgdst_proc->tag.wDir = CTRL_IN;
+				shmLgdst_proc->tag.wValue = RADIO_COMM_VAL;
+				shmLgdst_proc->tag.wIndex = RADIO_GET_PROPERTY_REPLY_IDX;
+
+				printf("Requesting reply from Atmel\n");
+				shmLgdst_proc->active = 1;  // wait for transaction complete
+				while (1==shmLgdst_proc->active) ;
+
+
+				uint8_t * prop_vals = (uint8_t*)acs->data;
+				printf("The requested properties: \n");
+				for (int i =0; i<RADIO_GET_PROPERTY_ATMEL_LEN;i++){
+					printf("%#0X\n", *(prop_vals+i));
+				}
+				if (ret)
+					*(uint8_t**)ret = acs->data;
+			}
+			else if (!strcasecmp(argv[3], RSSI)){
+				uint8_t * val = (uint8_t*)acs->data;
+				printf("RSSI value: %u\n", *val);
+				if (ret)
+					*(uint8_t**)ret = acs->data;
 			}
      }
    #endif

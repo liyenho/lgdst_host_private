@@ -1,3 +1,4 @@
+
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
@@ -95,9 +96,9 @@ int timer_term(void)
   {  ERRA"itimer terminate failed...\n"ERRB return -1; }
   get_time(&tend);
   //ERRA"endtime: "ERRB print_time(tend);
-  ERRA"STATUS:  deltamin wakeHandle: cnt=%d ",tdeltamincnt_w ERRB 
+  ERRA"STATUS:  deltamin wakeHandle: cnt=%d ",tdeltamincnt_w ERRB
   	print_time(tdeltamin_w);
-  ERRA"STATUS:  deltamax wakeHandle: cnt=%d ",tdeltamaxcnt_w ERRB 
+  ERRA"STATUS:  deltamax wakeHandle: cnt=%d ",tdeltamaxcnt_w ERRB
   	print_time(tdeltamax_w);
   //ERRA"proc_cnt=%d, handle_cnt=%d\n",proc_cnt,handle_cnt ERRB
 
@@ -160,7 +161,7 @@ int time_diff(struct timeval *time1, struct timeval *time2,
   }
   else
   {
-    diffTime->tv_usec = 1000000;
+    diffTime->tv_usec = /*1000000000*/1000000; // don't bypass mistake by creating new one, fix it! liyenho
     diffTime->tv_usec -= time2->tv_usec;
     diffTime->tv_usec += time1->tv_usec;
     carryOver = 1;

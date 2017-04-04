@@ -1,12 +1,14 @@
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <libusb.h>
-#include "usb_tx.h"
+#include "usb_rx.h"
+#include "cmd.h"
 
-extern struct libusb_device_handle *devh;
- static uint8_t Cmd_sequence = 0;
+extern struct libusb_device_handle*devh;
+static uint8_t Cmd_sequence = 0;
+
 
 uint32_t Cmd_busTx (
      uint32_t           bufferLength,
@@ -16,9 +18,9 @@ uint32_t Cmd_busTx (
 	 dev_access *acs = (dev_access*)msg;
     uint32_t     error = Error_NO_ERROR;
 
-     acs->access = IT951X_WRITE;
+     acs->access = IT913X_WRITE;
      acs->dcnt = bufferLength;
-     acs->addr = IT951X_ADDRESS;
+     acs->addr = IT913X_ADDRESS;
      memcpy(acs->data, buffer, bufferLength);
 
     for (i = 0; i < User_RETRY_MAX_LIMIT; i++) {
@@ -31,12 +33,13 @@ uint32_t Cmd_busTx (
          if (r == (sizeof(*acs)+(acs->dcnt-1))) goto exit;
          else error = -r; // error # defined in libusb, liyenho
 
-        short_sleep (0.1);
+        short_sleep (/*0.1*/0.01);
     }
 
 exit:
     return (error);
 }
+
 
 uint32_t Cmd_busRx (
     uint32_t           bufferLength,
@@ -46,9 +49,9 @@ uint32_t Cmd_busRx (
 	 dev_access *acs = (dev_access*)msg;
     uint32_t     error = Error_NO_ERROR;
 
-     acs->access = IT951X_READ;
+     acs->access = IT913X_READ;
      acs->dcnt = bufferLength;
-     acs->addr = IT951X_ADDRESS;
+     acs->addr = IT913X_ADDRESS;
 
     for (i = 0; i < User_RETRY_MAX_LIMIT; i++) {
 
@@ -57,7 +60,7 @@ uint32_t Cmd_busRx (
 						USB_HOST_MSG_TX_VAL,
 						USB_HOST_MSG_IDX,
 						acs, sizeof(*acs)+(acs->dcnt-1), 0);
-				short_sleep(0.1); 	// validate echo after 0.1 sec
+				short_sleep(/*0.1*/0.01); 	// validate echo after 0.1 sec
 
          if (r != (sizeof(*acs)+(acs->dcnt-1)))
          	continue ;
@@ -195,7 +198,7 @@ uint32_t Cmd_readRegisters (
         remainLength -= i;
     }
 
-    usleep(100000);  // gap write and read ops with sufficient delay
+    usleep(100000/*50000*/);  // gap write and read ops with sufficient delay
 
     /** get reply frame */
     bufferLength = 5 + readBufferLength;
@@ -259,9 +262,7 @@ uint32_t Cmd_writeRegisters (
         buffer[10 + i] = writeBuffer[i];
     }
 
-    usleep(100000);  // gap write and read ops with sufficient delay
-
-        /** add frame check-sum */
+    /** add frame check-sum */
     bufferLength = 10 + writeBufferLength;
     error = Cmd_addChecksum (&bufferLength, buffer);
     if (error) goto exit;
@@ -278,6 +279,8 @@ uint32_t Cmd_writeRegisters (
         sendLength   += i;
         remainLength -= i;
     }
+
+    usleep(100000/*50000*/);  // gap write and read ops with sufficient delay
 
     /** get reply frame */  // spec from China team not the Asic requirement! liyenho
     bufferLength = 5;
@@ -372,7 +375,7 @@ uint32_t Cmd_sendCommand (
         }
     }
 
-    usleep(100000);  // gap write and read ops with sufficient delay
+    usleep(/*50000*/10000);  // gap write and read ops with sufficient delay
     bufferLength = 5 + readBufferLength;
 
     error = Cmd_busRx (bufferLength, buffer);
@@ -391,121 +394,259 @@ exit :
     return (error);
 }
 
-uint32_t Standard_readRegisters (
-	uint8_t            chip,
-	Processor       processor,
-	uint32_t           registerAddress,
-	uint8_t            bufferLength,
-	uint8_t*           buffer
+uint32_t Cmd_writeTunerRegisters (
+    IN  uint8_t            chip,
+    IN  uint8_t            tunerAddress,
+    IN  uint16_t            registerAddress,
+    IN  uint8_t            registerAddressLength,
+    IN  uint8_t            writeBufferLength,
+    IN  uint8_t*           writeBuffer
 ) {
-	uint32_t error = Error_NO_ERROR;
+    uint32_t       error = Error_NO_ERROR;
+    uint16_t        command;
+    uint8_t        buffer[255];
+    uint32_t       bufferLength;
+    uint32_t       remainLength;
+    uint32_t       sendLength;
+    uint32_t       i;
+    uint32_t       maxFrameSize = 255;
 
-	uint8_t registerAddressLength;
 
-	if (processor == Processor_LINK) {
-		if (registerAddress > 0x000000FF) {
-			registerAddressLength = 2;
-		} else {
-			registerAddressLength = 1;
-		}
-	} else {
-		registerAddressLength = 2;
-	}
-	/*if (Cmd_readRegisters != NULL)*/ {
-		error = Cmd_readRegisters (chip, processor, registerAddress, registerAddressLength, bufferLength, buffer);
-	}
+    if (writeBufferLength == 0) goto exit;
 
-	return (error);
-}
-uint32_t Standard_writeRegisters (
-	uint8_t            chip,
-	Processor       processor,
-	uint32_t           registerAddress,
-	uint8_t            bufferLength,
-	uint8_t*           buffer
-) {
-	uint32_t error = Error_NO_ERROR;
 
-	uint8_t registerAddressLength;
+    if ((uint32_t)(writeBufferLength + 11) > maxFrameSize) {
+        error  = Error_INVALID_DATA_LENGTH;
+        goto exit;
+    }
 
-	if (processor == Processor_LINK) {
-		if (registerAddress > 0x000000FF) {
-			registerAddressLength = 2;
-		} else {
-			registerAddressLength = 1;
-		}
-	} else {
-			registerAddressLength = 2;
-	}
-	/*if (Cmd_writeRegisters != NULL)*/ {
-		error = Cmd_writeRegisters (chip, processor, registerAddress, registerAddressLength, bufferLength, buffer);
-	}
+    /** add frame header */
+    command   = Cmd_buildCommand (Command_REG_TUNER_WRITE, Processor_LINK, chip);
+    buffer[1] = (uint8_t) (command >> 8);
+    buffer[2] = (uint8_t) command;
+    buffer[3] = (uint8_t) Cmd_sequence++;
+    buffer[4] = (uint8_t) writeBufferLength;
+    buffer[5] = (uint8_t) tunerAddress;
+    buffer[6] = (uint8_t) registerAddressLength;
+    buffer[7] = (uint8_t) (registerAddress >> 8);  /** Get high uint8_t of reg. address */
+    buffer[8] = (uint8_t) (registerAddress);       /** Get low uint8_t of reg. address  */
 
-	return (error);
-}
+    /** add frame data */
+    for (i = 0; i < writeBufferLength; i++) {
+        buffer[9 + i] = writeBuffer[i];
+    }
 
-uint32_t Standard_getFirmwareVersion (
-	Processor       processor,
-	uint32_t*          version
-) {
-	uint32_t error = Error_NO_ERROR;
+    /** add frame check-sum */
+    bufferLength = 9 + writeBufferLength;
+    error = Cmd_addChecksum (&bufferLength, buffer);
+    if (error) goto exit;
 
-	uint8_t writeBuffer[1] = {0,};
-	uint8_t readBuffer[4] = {0,};
-	uint8_t value = 0;
+    /** send frame */
+    i = 0;
+    sendLength   = 0;
+    remainLength = bufferLength;
+    while (remainLength > 0) {
+        i = (remainLength > User_MAX_PKT_SIZE) ? (User_MAX_PKT_SIZE) : (remainLength);
+        error = Cmd_busTx ( i , &buffer[sendLength]);
+        if (error) goto exit;
 
-	/** Check chip version */
-	error = Standard_readRegisters (0, Processor_LINK, /*chip_version_7_0*/0x0/*???*/, 1, &value);
-	if (error) goto exit;
+        sendLength   += i;
+        remainLength -= i;
+    }
 
-	if (value == 0xF8 || User_MAX_PKT_SIZE > 9) {
-		/** Old version */
-		writeBuffer[0] = 1;
-		error = Cmd_sendCommand (Command_QUERYINFO, 0, processor, 1, writeBuffer, 4, readBuffer);
-		if (error) goto exit;
-	} else {
-		/** New version */
-		error = Cmd_sendCommand (Command_FW_DOWNLOAD_END, 0, Processor_LINK, 0, NULL, 0, NULL);
-		if (error == 0x01000009) { /* Boot code*/
-			readBuffer[0] = readBuffer[1] = readBuffer[2] = readBuffer[3] = 0;
-			error = 0;
-		} else if (error == 0x010000FA) { /* Firmware code*/
-			if (processor == Processor_LINK)
-			{
-				error = Standard_readRegisters (0, Processor_LINK, /*link_version_31_24*/0x0/*???*/, 1, readBuffer);
-				if (error) goto exit;
+    usleep(/*50000*/10000); //gap write and read ops with sufficient delay
 
-				error = Standard_readRegisters (0, Processor_LINK, /*link_version_23_16*/0x0/*???*/, 1, readBuffer + 1);
-				if (error) goto exit;
+    /** get reply frame */
+    bufferLength = 5;
+    error = Cmd_busRx ( bufferLength, buffer);
+    if (error) goto exit;
 
-				error = Standard_readRegisters (0, Processor_LINK, /*link_version_15_8*/0x0/*???*/, 1, readBuffer + 2);
-				if (error) goto exit;
-
-				error = Standard_readRegisters (0, Processor_LINK, /*link_version_7_0*/0x0/*???*/, 1, readBuffer + 3);
-				if (error) goto exit;
-			}
-			else
-			{
-				error = Standard_readRegisters (0, Processor_OFDM, /*link_version_31_24*/0x0/*???*/, 1, readBuffer);
-				if (error) goto exit;
-
-				error = Standard_readRegisters (0, Processor_OFDM, /*link_version_23_16*/0x0/*???*/, 1, readBuffer + 1);
-				if (error) goto exit;
-
-				error = Standard_readRegisters (0, Processor_OFDM, /*link_version_15_8*/0x0/*???*/, 1, readBuffer + 2);
-				if (error) goto exit;
-
-				error = Standard_readRegisters (0, Processor_OFDM, /*link_version_7_0*/0x0/*???*/, 1, readBuffer + 3);
-				if (error) goto exit;
-			}
-		} else /* error */
-			goto exit;
-	}
-
-	*version = (uint32_t) (((uint32_t) readBuffer[0] << 24) + ((uint32_t) readBuffer[1] << 16) + ((uint32_t) readBuffer[2] << 8) + (uint32_t) readBuffer[3]);
+    /** remove check-sum from reply frame */
+    error = Cmd_removeChecksum ( &bufferLength, buffer);
+    if (error) goto exit;
 
 exit :
-
-	return (error);
+    return (error);
 }
+
+uint32_t Cmd_readTunerRegisters (
+    IN  uint8_t            chip,
+    IN  uint8_t            tunerAddress,
+    IN  uint16_t            registerAddress,
+    IN  uint8_t            registerAddressLength,
+    IN  uint8_t            readBufferLength,
+    IN  uint8_t*           readBuffer
+) {
+    uint32_t       error = Error_NO_ERROR;
+    uint16_t        command;
+    uint8_t        buffer[255];
+    uint32_t       bufferLength;
+    uint32_t       remainLength;
+    uint32_t       sendLength;
+    uint32_t       i, k;
+    uint32_t       maxFrameSize = 255;
+
+    if (readBufferLength == 0) goto exit;
+
+    if ((uint32_t)(readBufferLength + 5) > User_MAX_PKT_SIZE) {
+        error = Error_INVALID_DATA_LENGTH;
+        goto exit;
+    }
+
+    if ((uint32_t)(readBufferLength + 5) > maxFrameSize) {
+        error = Error_INVALID_DATA_LENGTH;
+        goto exit;
+    }
+
+    /** add command header */
+    command   = Cmd_buildCommand (Command_REG_TUNER_READ, Processor_LINK, chip);
+    buffer[1] = (uint8_t) (command >> 8);
+    buffer[2] = (uint8_t) command;
+    buffer[3] = (uint8_t) Cmd_sequence++;
+    buffer[4] = (uint8_t) readBufferLength;
+    buffer[5] = (uint8_t) tunerAddress;
+    buffer[6] = (uint8_t) registerAddressLength;
+    buffer[7] = (uint8_t) (registerAddress >> 8);  /** Get high uint8_t of reg. address */
+    buffer[8] = (uint8_t) (registerAddress);       /** Get low uint8_t of reg. address  */
+
+    /** add frame check-sum */
+    bufferLength = 9;
+    error = Cmd_addChecksum ( &bufferLength, buffer);
+    if (error) goto exit;
+
+    /** send frame */
+    i = 0;
+    sendLength   = 0;
+    remainLength = bufferLength;
+    while (remainLength > 0) {
+        i = (remainLength > User_MAX_PKT_SIZE) ? (User_MAX_PKT_SIZE) : (remainLength);
+        error = Cmd_busTx ( i, &buffer[sendLength]);
+        if (error) goto exit;
+
+        sendLength   += i;
+        remainLength -= i;
+    }
+	    usleep(/*50000*/10000);  // gap write and read ops with sufficient delay
+
+    /** get reply frame */
+    bufferLength = 5 + readBufferLength;
+    error = Cmd_busRx ( bufferLength, buffer);
+    if (error) goto exit;
+
+    /** remove frame check-sum */
+    error = Cmd_removeChecksum ( &bufferLength, buffer);
+    if (error) goto exit;
+
+    for (k = 0; k < readBufferLength; k++) {
+        readBuffer[k] = buffer[k + 3];
+    }
+
+exit :
+    return (error);
+}
+
+
+uint32_t Cmd_loadFirmware (
+    IN  uint32_t           length,
+    IN  uint8_t*           firmware
+) {
+    uint32_t       error = Error_NO_ERROR;
+    uint16_t        command;
+    uint32_t       loop;
+    uint32_t       remain;
+    uint32_t       i, j, k;
+    uint8_t        buffer[255];
+    uint32_t       payloadLength;
+    uint32_t       bufferLength;
+    uint32_t       remainLength;
+    uint32_t       sendLength;
+    uint32_t       maxFrameSize = 255;
+
+    payloadLength = (maxFrameSize - 6);
+    loop   = length / payloadLength;
+    remain = length % payloadLength;
+
+    k = 0;
+    command = Cmd_buildCommand (Command_FW_DOWNLOAD, Processor_LINK, 0);
+    for (i = 0; i < loop; i++) {
+        buffer[1] = (uint8_t) (command >> 8);
+        buffer[2] = (uint8_t) command;
+        buffer[3] = (uint8_t) Cmd_sequence++;
+
+        for (j = 0; j < payloadLength; j++)
+            buffer[4 + j] = firmware[j + i*payloadLength];
+
+        bufferLength = 4 + payloadLength;
+        error = Cmd_addChecksum ( &bufferLength, buffer);
+        if (error) goto exit;
+
+        sendLength = 0;
+        remainLength = maxFrameSize;
+        while (remainLength > 0) {
+            k     = (remainLength > User_MAX_PKT_SIZE) ? (User_MAX_PKT_SIZE) : (remainLength);
+            error = Cmd_busTx ( k, &buffer[sendLength]);
+            if (error) goto exit;
+
+            sendLength   += k;
+            remainLength -= k;
+        }
+    }
+    usleep(/*50000*/10000);  // gap write and read ops with sufficient delay
+
+    if (remain) {
+        buffer[1] = (uint8_t) (command >> 8);
+        buffer[2] = (uint8_t) command;
+        buffer[3] = (uint8_t) Cmd_sequence++;
+
+        for (j = 0; j < remain; j++)
+            buffer[4 + j] = firmware[j + i*payloadLength];
+
+        bufferLength = 4 + remain;
+        error = Cmd_addChecksum ( &bufferLength, buffer);
+        if (error) goto exit;
+
+        sendLength   = 0;
+        remainLength = bufferLength;
+        while (remainLength > 0)
+        {
+            k = (remainLength > User_MAX_PKT_SIZE) ? (User_MAX_PKT_SIZE) : (remainLength);
+            error = Cmd_busTx ( k, &buffer[sendLength]);
+            if (error) goto exit;
+
+            sendLength   += k;
+            remainLength -= k;
+        }
+    }
+
+exit :
+    return (error);
+}
+
+
+uint32_t Cmd_reboot (
+    IN  uint8_t            chip
+) {
+    uint32_t       error = Error_NO_ERROR;
+    uint16_t        command;
+    uint8_t        buffer[255];
+    uint32_t       bufferLength;
+    uint32_t       maxFrameSize = 255;
+
+    command   = Cmd_buildCommand (Command_REBOOT, Processor_LINK, chip);
+    buffer[1] = (uint8_t) (command >> 8);
+    buffer[2] = (uint8_t) command;
+    buffer[3] = (uint8_t) Cmd_sequence++;
+    bufferLength = 4;
+    error = Cmd_addChecksum ( &bufferLength, buffer);
+    if (error) goto exit;
+
+    error = Cmd_busTx ( bufferLength, buffer);
+    if (error) goto exit;
+
+exit :
+    return (error);
+}
+
+
+
 
