@@ -918,6 +918,8 @@ int cpld_firmware_update(int mode, const char*file_name)
 		perror("FAIL: assigning signal handler");
 	}
 #endif
+   if (system_upgrade)
+   	return 1;	// system upgrade or atmel reboot...
 	r = pthread_create(&lgdst_thread, NULL, lgdst_thread_main, NULL);
 	if (0 != r)
 		perror_exit("lgdst thread creation error", r);

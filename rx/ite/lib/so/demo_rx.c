@@ -173,7 +173,7 @@ int main(int argc, char **argv)
    }
 
 	res = lgdst_init_rx(argc, argv);
-	if (res > 0) {  // failed to init, bail out
+	if (res > 0 && res != 1) {  // failed to init, bail out
 		lgdst_deinit_rx(res);
 	}
 	else if (1 == res) { // system upgrade or atmel reboot
