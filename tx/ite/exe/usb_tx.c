@@ -600,10 +600,10 @@ init_device(int argc,char **argv)
 		}
 	}
 	printf("claimed interface\n");
-	// send system restart command...
-	libusb_control_transfer(devh,CTRL_OUT, USB_RQ,USB_SYSTEM_RESTART_VAL,USB_HOST_MSG_IDX,NULL, 0, 0);
 	if (system_upgrade) // no need to bring up other proc threads,
 		goto upgrade_next;
+	// send system restart command...
+	libusb_control_transfer(devh,CTRL_OUT, USB_RQ,USB_SYSTEM_RESTART_VAL,USB_HOST_MSG_IDX,NULL, 0, 0);
 	// bring up all others after main system restart command sent...
 	r = pthread_create(&poll_thread, NULL, poll_thread_main, NULL);
 	if (0 != r)
@@ -1203,6 +1203,7 @@ download:
 #endif
 		deinit_device(0) ; // normal shutdown
   	}
+  	return 0;
   }
 #endif
 	init_rf2072();
