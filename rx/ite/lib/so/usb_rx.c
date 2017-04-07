@@ -310,9 +310,9 @@ void lgdst_ctl_snd_rx(unsigned char *tpacket)
 	int tx_cnt= 0, rx_cnt= 0;
 
 	printf("poll thread running\n");
-	printf("Setup Ctrl Radio Sockets... ip=%s portTx=%d portRx=%d\n",servIP, ctrl_port_base+1, ctrl_port_base);
+	printf("Setup Ctrl Radio Sockets... ip=%s portTx=%d portRx=%d\n",servIP, ctrl_port_base-1, ctrl_port_base);
 	int ctrlsnd_pt = htons(ctrl_port_base);
-	int ctrlrcv_pt = htons(ctrl_port_base+1);
+	int ctrlrcv_pt = htons(ctrl_port_base-1);
 
 	r = socket(AF_INET,SOCK_DGRAM,0);
 	s = socket(AF_INET,SOCK_DGRAM,0);

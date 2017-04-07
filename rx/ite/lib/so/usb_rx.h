@@ -31,7 +31,7 @@ typedef int bool;
 #define FRAME_BUFFS								5
 #define TIMEOUT									1000
 #define servIP  								"127.0.0.1"
-#define ctrl_port_base 							5561
+#define ctrl_port_base 							5560
 #define ERR_CHK_BUFFS                   	    160
 #define HOST_BUFFER_SIZE						(256-1) // max data len-1
 
