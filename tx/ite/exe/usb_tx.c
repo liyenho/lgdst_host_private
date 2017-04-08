@@ -287,8 +287,9 @@ void *poll_thread_main(void *arg)
 		ctrl_sckt_ok = true; // validate socket open
 	}
 
-
+printf("line # = %d\n", __LINE__);
 	while (!ready_wait_for_mloop) ;
+printf("line # = %d\n", __LINE__);
 	pthread_mutex_lock(&mux);
 	do {
 		libusb_control_transfer(devh,CTRL_IN, USB_RQ,USB_STREAM_ON_VAL,USB_QUERY_IDX,	(unsigned char*)&main_loop_on, sizeof(main_loop_on), 0);
@@ -615,7 +616,7 @@ upgrade_next:
 	r = pthread_create(&lgdst_thread, NULL, lgdst_thread_main, NULL);
 	if (0 != r)
 		perror_exit("lgdst thread creation error", r);
-
+printf("line # = %d\n", __LINE__);
 	return 0;
 
 }
@@ -835,7 +836,7 @@ int init_rf2072(void)
 	short_sleep(0.01);
 	printf("lock state = 0x%x\n",(0x8000&*(uint16_t*)acs->data)?1:0);
 
-	printf("rx rffe is running...\n");
+	printf("tx rffe is running...\n");
 
 	return 0;
 
@@ -1228,7 +1229,7 @@ printf("line # = %d\n", __LINE__);
 	channel_Modulation.transmissionMode=TransmissionMode_2K;
 	error=it9517_set_channel_modulation( channel_Modulation,2);
 	if(error)goto exit;
-	error=it9517_acquire_channel(809000,6000);
+	error=it9517_acquire_channel(/*809000*/750000,6000); //avoid conflict with wifi, liyenho
 	if(error)goto exit;
 	//error=it9517_get_output_gain();
 	//if(error)goto exit;

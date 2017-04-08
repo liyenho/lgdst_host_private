@@ -36,7 +36,7 @@ typedef int bool;
 #define DEBUG_CTRLTX                   				0
 #define DEBUG_VIDEO                     			1
 #define servIP  									"127.0.0.1"
-#define ctrl_port_base 								5561
+#define ctrl_port_base 								5559
 #define HOST_BUFFER_SIZE							(256-1) // max data len-1
 #define UDPIN_PORT 									5553
 #define UDPIN_MULTIADDR 							"127.0.0.1"
