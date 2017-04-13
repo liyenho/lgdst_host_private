@@ -820,7 +820,7 @@ int init_rf2072(void)
 	short_sleep(0.01);
 	printf("setup device control = 0x%04x\n",*(uint16_t*)acs->data);
 	acs->access = RF2072_READ;
-	acs->addr = 0x00;
+	acs->addr = 0x1F;
 	libusb_control_transfer(devh,
 			CTRL_OUT, USB_RQ,
 			USB_HOST_MSG_TX_VAL,
