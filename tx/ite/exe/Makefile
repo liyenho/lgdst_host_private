@@ -10,12 +10,18 @@ LDFLAGS		= -L/usr/local/lib -L/usr/lib -lusb-1.0 -lpthread -lrt -lm
 #Library and executable names
 TARGET = usb_tx
 OBJS = orion_cal.o timer.o tuner.o it9510.o user.o usb_tx.o platform_it9517.o
+ACCESS = lgdst
+	SRC_ACCESS	= fpga_access.c timer.c
+
 all:$(TARGET)
 
 .c.o:
 	$(CC) $(CFLAGS) -c $< -o $@
 $(TARGET):$(OBJS)
 	$(CC) -o $@ $(OBJS) $(LDFLAGS)
+
+${ACCESS}: ${SRC_ACCESS}
+	${CC} -o $@ $(CFLAGS) ${SRC_ACCESS} $(LDFLAGS)
 
 clean:
 	/bin/rm -f ${ACCESS}
