@@ -289,16 +289,6 @@ void *poll_thread_main(void *arg)
 
 	while (!ready_wait_for_mloop) ;
 
-	pthread_mutex_lock(&mux);
-	do {
-		libusb_control_transfer(devh,CTRL_IN, USB_RQ,USB_STREAM_ON_VAL,USB_QUERY_IDX,	(unsigned char*)&main_loop_on, sizeof(main_loop_on), 0);
-		if (!main_loop_on) {
-			short_sleep(1); 	// setup & settle in 1 sec
-		} else
-			break;
-	} while (1);
-	pthread_mutex_unlock(&mux);
-
 	si4463_radio_up = true;
 	r=0;
 	r = pthread_create(&ctrl_thr_recv, NULL, ctrl_poll_recv, &ctrl_sckt_ok);
@@ -603,6 +593,19 @@ init_device(int argc,char **argv)
 		goto upgrade_next;
 	// send system restart command...
 	libusb_control_transfer(devh,CTRL_OUT, USB_RQ,USB_SYSTEM_RESTART_VAL,USB_HOST_MSG_IDX,NULL, 0, 0);
+
+ 		do {
+			 libusb_control_transfer(devh,
+					CTRL_IN, USB_RQ,
+					USB_STREAM_ON_VAL,
+					USB_QUERY_IDX,
+					&main_loop_on, sizeof(main_loop_on), 0);
+			if (!main_loop_on) {
+				short_sleep(1); 	// setup & settle in 1 sec
+			} else
+			break;
+		} while (1);
+
 	// bring up all others after main system restart command sent...
 	r = pthread_create(&poll_thread, NULL, poll_thread_main, NULL);
 	if (0 != r)
@@ -615,6 +618,7 @@ upgrade_next:
 	if (0 != r)
 		perror_exit("lgdst thread creation error", r);
 printf("line # = %d\n", __LINE__);
+
 	return 0;
 
 }
@@ -775,13 +779,6 @@ int init_rf2072(void)
 	int32_t i, sz, msg[80]; // access buffer
 	dev_access *acs = (dev_access*)msg;
 	uint16_t *conv= (uint16_t*)acs->data;
-	do {
-		libusb_control_transfer(devh,CTRL_IN, USB_RQ,	USB_STREAM_ON_VAL,USB_QUERY_IDX,(unsigned char*)&main_loop_on, sizeof(main_loop_on), 0);
-		if (!main_loop_on) {
-			short_sleep(1); 	// setup & settle in 1 sec
-		} else
-			break;
-	} while (1);
 
 	open_ini(&chsel_tx, &pwr_attn);  // get default chan/pwr settings
 
@@ -1083,17 +1080,6 @@ download:
  	}
  #endif
 		cur = blksz;
- 		do {
-			 libusb_control_transfer(devh,
-					CTRL_IN, USB_RQ,
-					USB_STREAM_ON_VAL,
-					USB_QUERY_IDX,
-					&main_loop_on, sizeof(main_loop_on), 0);
-			if (!main_loop_on) {
-				short_sleep(1); 	// setup & settle in 1 sec
-			} else
-			break;
-		} while (1);
  #ifdef FWUP_DNLD_DBG
  		rem = len;
  		do {
@@ -1207,13 +1193,6 @@ download:
   }
 #endif
 #if /*true*/false  // test atmel encapsulation of asic host
-	do {
-		libusb_control_transfer(devh,CTRL_IN, USB_RQ,	USB_STREAM_ON_VAL,USB_QUERY_IDX,(unsigned char*)&main_loop_on, sizeof(main_loop_on), 0);
-		if (!main_loop_on) {
-			short_sleep(1); 	// setup & settle in 1 sec
-		} else
-			break;
-	} while (1);
 	// initialize video subsystem inside atmel
 		 libusb_control_transfer(devh,
 		 													CTRL_OUT,
