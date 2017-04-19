@@ -596,7 +596,7 @@ int tsptsadj(unsigned char* buff, int len, int pidid, int pcrid)
 
     if(tag< tagprev) tagdelta = tag+ITERS - tagprev;
     else             tagdelta = tag - tagprev;
-    if(/*1*/ccerror) // don't print out unless cc encounters error
+    if(1/*ccerror*/) // don't print out unless cc encounters error
       printf("Video Status: ts_cnt=%d ts_discontinuity=%d \n",tagdelta, ccerror);
         tagprev = tag;
         ccerror =0;
@@ -1488,6 +1488,33 @@ bool lgdst_upgrade_rx(int argc, char **argv)  // return -1 when failed, liyenho
    if (system_upgrade)
    	return 1;	// system upgrade or atmel reboot...
 #endif
+#if /*true*/false  // test atmel encapsulation of asic host
+	do {
+		libusb_control_transfer(devh,CTRL_IN, USB_RQ,USB_STREAM_ON_VAL,USB_QUERY_IDX,(unsigned char*)&main_loop_on, sizeof(main_loop_on), 0);
+		if (!main_loop_on) {
+			short_sleep(1); 	// setup & settle in 1 sec
+		} else
+			break;
+	} while (1);
+	// initialize video subsystem inside atmel
+		 libusb_control_transfer(devh,
+		 													CTRL_OUT,
+		 													USB_RQ,
+															USB_INIT_VID_SUBSYS,
+															0x1,
+															NULL,
+															0,
+															0);
+	// startup video subsystem inside atmel
+		 libusb_control_transfer(devh,
+		 													CTRL_OUT,
+		 													USB_RQ,
+															USB_START_VID_SUBSYS,
+															0x1,
+															NULL,
+															0,
+															0);
+#else
 	init_rf2072();
 
 #if 1
@@ -1509,7 +1536,7 @@ bool lgdst_upgrade_rx(int argc, char **argv)  // return -1 when failed, liyenho
 	//if(error)goto _exit;
 //     error= it9137_scan_channel(0,747000,832000, 6000);
   //  if(error)goto _exit;
-	error=it9137_acquire_channel(0,809000,6000);
+	error=it9137_acquire_channel(0,/*809000*/750000,6000); //avoid conflict with wifi, liyenho
 	if(error)goto _exit;
 	//error=it9137_get_if_agc(0);
 //	if(error)goto _exit;
@@ -1555,6 +1582,7 @@ bool lgdst_upgrade_rx(int argc, char **argv)  // return -1 when failed, liyenho
 	//if(error)goto _exit;
 	i++;
 	}
+#endif
 #endif
 ready_wait_for_mloop = true;
 #ifndef LIB
