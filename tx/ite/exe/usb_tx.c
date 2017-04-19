@@ -1207,6 +1207,13 @@ download:
   }
 #endif
 #if /*true*/false  // test atmel encapsulation of asic host
+	do {
+		libusb_control_transfer(devh,CTRL_IN, USB_RQ,	USB_STREAM_ON_VAL,USB_QUERY_IDX,(unsigned char*)&main_loop_on, sizeof(main_loop_on), 0);
+		if (!main_loop_on) {
+			short_sleep(1); 	// setup & settle in 1 sec
+		} else
+			break;
+	} while (1);
 	// initialize video subsystem inside atmel
 		 libusb_control_transfer(devh,
 		 													CTRL_OUT,
