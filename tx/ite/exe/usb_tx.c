@@ -287,9 +287,8 @@ void *poll_thread_main(void *arg)
 		ctrl_sckt_ok = true; // validate socket open
 	}
 
-printf("line # = %d\n", __LINE__);
 	while (!ready_wait_for_mloop) ;
-printf("line # = %d\n", __LINE__);
+
 	pthread_mutex_lock(&mux);
 	do {
 		libusb_control_transfer(devh,CTRL_IN, USB_RQ,USB_STREAM_ON_VAL,USB_QUERY_IDX,	(unsigned char*)&main_loop_on, sizeof(main_loop_on), 0);
@@ -299,7 +298,6 @@ printf("line # = %d\n", __LINE__);
 			break;
 	} while (1);
 	pthread_mutex_unlock(&mux);
-
 
 	si4463_radio_up = true;
 	r=0;
@@ -820,7 +818,7 @@ int init_rf2072(void)
 	short_sleep(0.01);
 	printf("setup device control = 0x%04x\n",*(uint16_t*)acs->data);
 	acs->access = RF2072_READ;
-	acs->addr = 0x1F;
+	acs->addr = 0x00;
 	libusb_control_transfer(devh,
 			CTRL_OUT, USB_RQ,
 			USB_HOST_MSG_TX_VAL,
@@ -1208,6 +1206,28 @@ download:
   	return 0;
   }
 #endif
+#if /*true*/false  // test atmel encapsulation of asic host
+	// initialize video subsystem inside atmel
+		 libusb_control_transfer(devh,
+		 													CTRL_OUT,
+		 													USB_RQ,
+															USB_INIT_VID_SUBSYS,
+															0x1,
+															NULL,
+															0,
+															0);
+	// startup video subsystem inside atmel
+		 libusb_control_transfer(devh,
+		 													CTRL_OUT,
+		 													USB_RQ,
+															USB_START_VID_SUBSYS,
+															0x1,
+															NULL,
+															0,
+															0);
+printf("line # = %d\n", __LINE__);
+	udpin_init();
+#else
 printf("line # = %d\n", __LINE__);
 	init_rf2072();
 printf("line # = %d\n", __LINE__);
@@ -1229,14 +1249,16 @@ printf("line # = %d\n", __LINE__);
 	channel_Modulation.transmissionMode=TransmissionMode_2K;
 	error=it9517_set_channel_modulation( channel_Modulation,2);
 	if(error)goto exit;
+	//error=it9517_acquire_channel(/*809000*/750000,6000); //avoid conflict with wifi, liyenho
 	error=it9517_acquire_channel(809000,6000);
 	if(error)goto exit;
 	//error=it9517_get_output_gain();
 	//if(error)goto exit;
 	//error=it9517_get_output_gain_range(809000,6000);
 	//if(error)goto exit;
+	error=it9517_adjust_output_gain(0/*-30*/);
 	//error=it9517_adjust_output_gain(0);
-	//if(error)goto exit;
+	if(error)goto exit;
 	//	error = it9517_reset_pidfilter();
 	//	if(error)goto exit;
 	//	error= it9517_control_pidfilter(0,1);
@@ -1249,7 +1271,7 @@ printf("line # = %d\n", __LINE__);
 	error=it9517_enable_transmission_mode(1);
 	if(error)goto exit;
 	//	gettimeofday(&end1,NULL);
-
+#endif
 	int32_t  msg[80]; // access buffer
 	//uint16_t *conv= (uint16_t*)acs->data;
 
