@@ -131,6 +131,8 @@ static int udpout_init(char* udpaddr)
   }
 
   static void *vid_frmc_rx(void *arg) {
+	  const struct timeval loop= {3, 0}; // in every three secs
+	  struct timeval tstart,tend,tdelta;
 //	printf("line # = %d\n", __LINE__);
 	    /* allocate the output media context */
 	    ic = avformat_alloc_context();
@@ -220,6 +222,7 @@ static int udpout_init(char* udpaddr)
 //	printf("line # = %d\n", __LINE__);
     	int got_frame =0, fper= 0;
     	uint32_t vfcnt =1;
+		get_time(&tstart);
 		while (1 != do_exit_m && !av_read_frame(ic, pkt) &&pkt->size) {
 //	printf("line # = %d\n", __LINE__);
          if (0>avcodec_decode_video2(avctx, frm, &got_frame, pkt))
@@ -234,6 +237,12 @@ static int udpout_init(char* udpaddr)
 	      	}
 	      	vfcnt = vfcnt + 1;
 	      }
+			get_time(&tend);
+			time_diff(&tend, &tstart, &tdelta);
+			if (compare_time(&tdelta,&loop)>0) {
+				lgdst_vid_stats_rx();
+				tstart = tend;
+			}
 		}
 failed:
 //	printf("line # = %d\n", __LINE__);
@@ -247,11 +256,8 @@ failed:
   }
 #endif
   static void *vid_recv_rx(void *arg) {
-	  const struct timeval loop= {3, 0}; // in every three secs
-	  struct timeval tstart,tend,tdelta;
 		udpout_init(UDPOUT_ADDR) ;
       int r = FRAME_SIZE_A;
-		get_time(&tstart);
 		while (1 != do_exit_m) {
 			lgdst_ts_rx(tsbuf);
       {
@@ -271,14 +277,6 @@ failed:
 #ifdef VIDEO_STATS
 		stream_on = true;
 #endif
-/* stop query activiity as it interfere with TS transfer
-			get_time(&tend);
-			time_diff(&tend, &tstart, &tdelta);
-			if (compare_time(&tdelta,&loop)>0) {
-				lgdst_vid_stats_rx();
-				tstart = tend;
-			}
-*/
 		}
 		return ;
 	}
