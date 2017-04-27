@@ -271,12 +271,14 @@ failed:
 #ifdef VIDEO_STATS
 		stream_on = true;
 #endif
+/* stop query activiity as it interfere with TS transfer
 			get_time(&tend);
 			time_diff(&tend, &tstart, &tdelta);
 			if (compare_time(&tdelta,&loop)>0) {
 				lgdst_vid_stats_rx();
 				tstart = tend;
 			}
+*/
 		}
 		return ;
 	}
