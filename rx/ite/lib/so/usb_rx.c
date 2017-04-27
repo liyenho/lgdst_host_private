@@ -586,7 +586,7 @@ int tsptsadj(unsigned char* buff, int len, int pidid, int pcrid)
 
     if(tag< tagprev) tagdelta = tag+ITERS - tagprev;
     else             tagdelta = tag - tagprev;
-    if(1/*ccerror*/) // don't print out unless cc encounters error
+    if(ccerror) // don't print out unless cc encounters error
       printf("Video Status: ts_cnt=%d ts_discontinuity=%d \n",tagdelta, ccerror);
         tagprev = tag;
         ccerror =0;
