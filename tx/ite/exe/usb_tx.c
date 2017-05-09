@@ -57,6 +57,7 @@ struct timeval udpin_tv= {0};
 struct sockaddr_in udpin, udpout;
 struct ip_mreq udpin_mreq;
 
+void fsm_time_ant_sw() ; // extr declr for timer.c
 
 static FILE *file = NULL;
 unsigned char audbuf[FRAME_SIZE_A*FRAME_BUFFS]__attribute__((aligned(8)));
@@ -1290,8 +1291,15 @@ printf("line # = %d\n", __LINE__);
 		else{
 			static int tpbprtcnt=0;
 			tpbprtcnt++;
-			if(tpbprtcnt>100)
+			if(tpbprtcnt>/*100*/28) {
+				// it is approximately 1 sec after received up 167 TS blocks @ 2.5 mb/s
+				// so it is approximately 1/6 sec after received up 28 TS blocks @ 2.5 mb/s
+//#define TIME_ANT_SW
+  #ifdef TIME_ANT_SW
+				fsm_time_ant_sw();
+  #endif
 				tpbprtcnt=0;
+			}
 						printf("send a transport packet block,%d\n",tag);
 
 		}
@@ -1320,6 +1328,55 @@ printf("line # = %d\n", __LINE__);
 	return error;
 
    }
+
+void fsm_time_ant_sw() {
+	static int tm_tick =0;
+	tm_tick += 1;
+	switch(tm_tick) {
+		case 1: pthread_mutex_lock(&mux);
+						it9517_adjust_output_gain(1);
+						pthread_mutex_unlock(&mux);
+						break;
+		case 2: pthread_mutex_lock(&mux);
+						it9517_adjust_output_gain(2);
+						pthread_mutex_unlock(&mux);
+						break;
+		case 3: pthread_mutex_lock(&mux);
+						it9517_adjust_output_gain(3);
+		 				libusb_control_transfer(devh,
+		 													CTRL_OUT,
+		 													USB_RQ,
+															USB_VID_ANT_SWITCH,
+															0x1,
+															NULL,
+															0,
+															0);
+						pthread_mutex_unlock(&mux);
+						break ;
+		case 4: pthread_mutex_lock(&mux);
+						it9517_adjust_output_gain(2);
+						pthread_mutex_unlock(&mux);
+						break;
+		case 5: pthread_mutex_lock(&mux);
+						it9517_adjust_output_gain(1);
+						pthread_mutex_unlock(&mux);
+						break;
+		case 6: pthread_mutex_lock(&mux);
+						it9517_adjust_output_gain(0);
+						pthread_mutex_unlock(&mux);
+						break;
+		default: break;
+	}
+#ifdef TIME_ANT_SW
+	if (18 == tm_tick) { // cycle every 3 sec
+		tm_tick = 0;
+	}
+#else  // in real case
+	if (6 == tm_tick) { // in a full sec
+		tm_tick = 0;
+	}
+#endif
+}
 
 
 

@@ -75,10 +75,10 @@ int timer_kickoff(int wakeperiod)
   struct itimerval oldtime, newtime;
     /* arm wakeup timer */
   signal(SIGALRM, wakeup_handler);
-  newtime.it_interval.tv_sec = WAKE_PERIOD_SEC;
-  newtime.it_interval.tv_usec = wakeperiod;
-  newtime.it_value.tv_sec = WAKE_PERIOD_SEC;
-  newtime.it_value.tv_usec = wakeperiod;
+  newtime.it_interval.tv_sec = /*WAKE_PERIOD_SEC*/wakeperiod/1000000;
+  newtime.it_interval.tv_usec = wakeperiod%1000000;
+  newtime.it_value.tv_sec = /*WAKE_PERIOD_SEC*/wakeperiod/1000000;
+  newtime.it_value.tv_usec = wakeperiod%1000000;
   if(setitimer(ITIMER_REAL, &newtime,&oldtime)<0)
   { ERRA"itimer arm failed...\n"ERRB  return -1; }
   return 0;
@@ -95,9 +95,9 @@ int timer_term(void)
   {  ERRA"itimer terminate failed...\n"ERRB return -1; }
   get_time(&tend);
   //ERRA"endtime: "ERRB print_time(tend);
-  ERRA"STATUS:  deltamin wakeHandle: cnt=%d ",tdeltamincnt_w ERRB 
+  ERRA"STATUS:  deltamin wakeHandle: cnt=%d ",tdeltamincnt_w ERRB
   	print_time(tdeltamin_w);
-  ERRA"STATUS:  deltamax wakeHandle: cnt=%d ",tdeltamaxcnt_w ERRB 
+  ERRA"STATUS:  deltamax wakeHandle: cnt=%d ",tdeltamaxcnt_w ERRB
   	print_time(tdeltamax_w);
   //ERRA"proc_cnt=%d, handle_cnt=%d\n",proc_cnt,handle_cnt ERRB
 
