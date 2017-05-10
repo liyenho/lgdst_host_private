@@ -298,7 +298,12 @@ void *poll_thread_main(void *arg)
 	r = pthread_create(&ctrl_thr_send, NULL, ctrl_poll_send, &ctrl_sckt_ok);
 	if (0 != r)
 		perror_exit("ctrl send thread creation error", r);
-
+//#define TIME_ANT_SW
+ #ifdef TIME_ANT_SW
+	struct timeval tstart, tend, tdelta,
+								  tsim = { 0, 166667 };  // every 1/6 sec
+	get_time(&tstart);
+ #endif
 	while (1==do_exit) {
 		struct timeval tv = { 0, 10000 };
 		r = libusb_handle_events_timeout(NULL, &tv);
@@ -306,6 +311,26 @@ void *poll_thread_main(void *arg)
 			perror_exit("event handler failed", r);
 			break;
 		}
+ #ifdef TIME_ANT_SW
+  			get_time(&tend);
+  			time_diff(&tend,&tstart,&tdelta);
+  			if(compare_time(&tsim, &tdelta)<0){
+	  			/////////////////////////////////////////////////////////
+	struct timeval start ,end;
+	uint32_t diff;
+  				gettimeofday(&start,NULL);
+  				////////////////////////////////////////////////////////
+				fsm_time_ant_sw();
+				tstart = tend;
+				////////////////////////////////////////////////////////
+				gettimeofday(&end,NULL);
+				diff= 1000*((int)end.tv_sec-
+													(int)start.tv_sec)+
+								0.001*((int)end.tv_usec-(int)start.tv_usec);
+				printf("time taken = %d ms\n", diff);
+				////////////////////////////////////////////////////////
+			}
+ #endif
 	}
 
 	pthread_join(ctrl_thr_recv, NULL);
@@ -1294,9 +1319,14 @@ printf("line # = %d\n", __LINE__);
 			if(tpbprtcnt>/*100*/28) {
 				// it is approximately 1 sec after received up 167 TS blocks @ 2.5 mb/s
 				// so it is approximately 1/6 sec after received up 28 TS blocks @ 2.5 mb/s
-//#define TIME_ANT_SW
-  #ifdef TIME_ANT_SW
-				fsm_time_ant_sw();
+  #if false
+  			gettimeofday(&start,NULL);
+				fsm_time_ant_sw();  // it took 93-94 ms, way too long for smooth TS block xfer...
+			gettimeofday(&end1,NULL);
+			diff= 1000*((int)end1.tv_sec-
+												(int)start.tv_sec)+
+							0.001*((int)end1.tv_usec-(int)start.tv_usec);
+			printf("time taken = %d ms\n", diff);
   #endif
 				tpbprtcnt=0;
 			}
@@ -1333,17 +1363,13 @@ void fsm_time_ant_sw() {
 	static int tm_tick =0;
 	tm_tick += 1;
 	switch(tm_tick) {
-		case 1: pthread_mutex_lock(&mux);
-						it9517_adjust_output_gain(1);
-						pthread_mutex_unlock(&mux);
+		case 1: it9517_adjust_output_gain(1);
 						break;
-		case 2: pthread_mutex_lock(&mux);
-						it9517_adjust_output_gain(2);
-						pthread_mutex_unlock(&mux);
+		case 2: it9517_adjust_output_gain(2);
 						break;
-		case 3: pthread_mutex_lock(&mux);
-						it9517_adjust_output_gain(3);
-		 				libusb_control_transfer(devh,
+		case 3: it9517_adjust_output_gain(3);
+		 				pthread_mutex_lock(&mux);
+						libusb_control_transfer(devh,
 		 													CTRL_OUT,
 		 													USB_RQ,
 															USB_VID_ANT_SWITCH,
@@ -1353,17 +1379,11 @@ void fsm_time_ant_sw() {
 															0);
 						pthread_mutex_unlock(&mux);
 						break ;
-		case 4: pthread_mutex_lock(&mux);
-						it9517_adjust_output_gain(2);
-						pthread_mutex_unlock(&mux);
+		case 4: it9517_adjust_output_gain(2);
 						break;
-		case 5: pthread_mutex_lock(&mux);
-						it9517_adjust_output_gain(1);
-						pthread_mutex_unlock(&mux);
+		case 5: it9517_adjust_output_gain(1);
 						break;
-		case 6: pthread_mutex_lock(&mux);
-						it9517_adjust_output_gain(0);
-						pthread_mutex_unlock(&mux);
+		case 6: it9517_adjust_output_gain(0);
 						break;
 		default: break;
 	}

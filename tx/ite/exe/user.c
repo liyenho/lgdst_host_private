@@ -2,11 +2,13 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <pthread.h> // for mutex declr
 #include <libusb.h>
 #include "usb_tx.h"
 #include "user.h"
 
 extern struct libusb_device_handle *devh;
+extern pthread_mutex_t mux;
 
 static DCtable dc_table[7];
 static DCtable ofs_table[7];
@@ -151,7 +153,9 @@ uint32_t IT9510User_busTx (
 	 memcpy(acs->data, buffer, bufferLength);
 	 for (i = 0; i < IT9510User_MAXFRAMESIZE; i++)
 	 	{
+		 	pthread_mutex_lock(&mux);
 			r = libusb_control_transfer(devh,CTRL_OUT, USB_RQ,USB_HOST_MSG_TX_VAL,USB_HOST_MSG_IDX,(unsigned char*)acs, sizeof(*acs)+(acs->dcnt-1), 0);
+			pthread_mutex_unlock(&mux);
 			if (r == (sizeof(*acs)+(acs->dcnt-1))) goto exit;
 			else error = -r; // error # defined in libusb, liyenho
 			short_sleep (0.01);
@@ -175,7 +179,9 @@ uint32_t IT9510User_busTx2 (
 	 memcpy(acs->data, buffer, bufferLength);
 	 for (i = 0; i < IT9510User_MAXFRAMESIZE; i++)
 	 	{
+		 	pthread_mutex_lock(&mux);
 			r = libusb_control_transfer(devh,CTRL_OUT, USB_RQ,USB_HOST_MSG_TX_VAL,USB_HOST_MSG_IDX,(unsigned char*)acs, sizeof(*acs)+(acs->dcnt-1), 0);
+			pthread_mutex_unlock(&mux);
 			if (r == (sizeof(*acs)+(acs->dcnt-1))) goto exit;
 			else error = -r; // error # defined in libusb, liyenho
 			short_sleep (0.1);
@@ -199,12 +205,21 @@ uint32_t IT9510User_busRx (
 	 acs->addr = IT951X_ADDRESS;
 	 for (i = 0; i < IT9510User_MAXFRAMESIZE; i++)
 	 {
+		 	pthread_mutex_lock(&mux);
 			r =	libusb_control_transfer(devh,CTRL_OUT, USB_RQ,USB_HOST_MSG_TX_VAL,USB_HOST_MSG_IDX,	(unsigned char*)acs, sizeof(*acs)+(acs->dcnt-1), 0);
+			pthread_mutex_unlock(&mux);
 			short_sleep(0.01); 	// validate echo after 0.1 sec
 			if (r != (sizeof(*acs)+(acs->dcnt-1)))
 				continue ;
-			while(0==libusb_control_transfer(devh,CTRL_IN, USB_RQ,USB_HOST_MSG_RX_VAL,USB_HOST_MSG_IDX,	(unsigned char*)acs, sizeof(*acs)+(acs->dcnt-1), 0))
+			while(1) {
+		 		pthread_mutex_lock(&mux);
+				if (libusb_control_transfer(devh,CTRL_IN, USB_RQ,USB_HOST_MSG_RX_VAL,USB_HOST_MSG_IDX,	(unsigned char*)acs, sizeof(*acs)+(acs->dcnt-1), 0)){
+					pthread_mutex_unlock(&mux);
+					break;
+				}
+				pthread_mutex_unlock(&mux);
 				short_sleep(0.0005);
+			}
 			break ;
 	  }
 	 memcpy(buffer, acs->data, bufferLength);
@@ -223,12 +238,21 @@ uint32_t IT9510User_busRx2 (
 	 acs->addr = IT951X_ADDRESS;
 	 for (i = 0; i < IT9510User_MAXFRAMESIZE; i++)
 	 {
+		 	pthread_mutex_lock(&mux);
 			r =	libusb_control_transfer(devh,CTRL_OUT, USB_RQ,USB_HOST_MSG_TX_VAL,USB_HOST_MSG_IDX,	(unsigned char*)acs, sizeof(*acs)+(acs->dcnt-1), 0);
+			pthread_mutex_unlock(&mux);
 			short_sleep(0.1); 	// validate echo after 0.1 sec
 			if (r != (sizeof(*acs)+(acs->dcnt-1)))
 				continue ;
-			while(0==libusb_control_transfer(devh,CTRL_IN, USB_RQ,USB_HOST_MSG_RX_VAL,USB_HOST_MSG_IDX,	(unsigned char*)acs, sizeof(*acs)+(acs->dcnt-1), 0))
+			while(1) {
+				pthread_mutex_lock(&mux);
+				if (libusb_control_transfer(devh,CTRL_IN, USB_RQ,USB_HOST_MSG_RX_VAL,USB_HOST_MSG_IDX,	(unsigned char*)acs, sizeof(*acs)+(acs->dcnt-1), 0)){
+					pthread_mutex_unlock(&mux);
+					break;
+				}
+				pthread_mutex_unlock(&mux);
 				short_sleep(0.0005);
+			}
 			break ;
 	  }
 	 memcpy(buffer, acs->data, bufferLength);
