@@ -35,7 +35,7 @@
 			  char *argv[20+1] ; // max 20 fields on cmdline
 			  int argc = 0;
 			  do {
-			  		argv[argc++] = strtok(pl, " ");
+			  		argv[argc++] = strtok(pl, " \n");
 			  		pl = NULL;
 		  		} while (20>=argc && argv[argc-1]) ;
 		  		if (1==argc) {
