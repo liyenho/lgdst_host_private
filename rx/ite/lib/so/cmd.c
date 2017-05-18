@@ -8,6 +8,7 @@
 
 extern struct libusb_device_handle*devh;
 static uint8_t Cmd_sequence = 0;
+extern pthread_mutex_t mux;
 
 
 uint32_t Cmd_busTx (
@@ -24,12 +25,13 @@ uint32_t Cmd_busTx (
      memcpy(acs->data, buffer, bufferLength);
 
     for (i = 0; i < User_RETRY_MAX_LIMIT; i++) {
-
+		 	pthread_mutex_lock(&mux);
 		r = libusb_control_transfer(devh,
 						CTRL_OUT, USB_RQ,
 						USB_HOST_MSG_TX_VAL,
 						USB_HOST_MSG_IDX,
 						acs, sizeof(*acs)+(acs->dcnt-1), 0);
+			pthread_mutex_unlock(&mux);
          if (r == (sizeof(*acs)+(acs->dcnt-1))) goto exit;
          else error = -r; // error # defined in libusb, liyenho
 
@@ -54,23 +56,27 @@ uint32_t Cmd_busRx (
      acs->addr = IT913X_ADDRESS;
 
     for (i = 0; i < User_RETRY_MAX_LIMIT; i++) {
-
+		 	pthread_mutex_lock(&mux);
         	r =	libusb_control_transfer(devh,
 						CTRL_OUT, USB_RQ,
 						USB_HOST_MSG_TX_VAL,
 						USB_HOST_MSG_IDX,
 						acs, sizeof(*acs)+(acs->dcnt-1), 0);
+			pthread_mutex_unlock(&mux);
 				short_sleep(/*0.1*/0.01); 	// validate echo after 0.1 sec
 
          if (r != (sizeof(*acs)+(acs->dcnt-1)))
          	continue ;
 
-	  	 	while(0==libusb_control_transfer(devh,
-					  	CTRL_IN, USB_RQ,
-					  	USB_HOST_MSG_RX_VAL,
-					  	USB_HOST_MSG_IDX,
-					  	acs, sizeof(*acs)+(acs->dcnt-1), 0))
+			while(1) {
+		 		pthread_mutex_lock(&mux);
+				if (libusb_control_transfer(devh,CTRL_IN, USB_RQ,USB_HOST_MSG_RX_VAL,USB_HOST_MSG_IDX,(unsigned char*)acs, sizeof(*acs)+(acs->dcnt-1), 0)){
+					pthread_mutex_unlock(&mux);
+					break;
+				}
+				pthread_mutex_unlock(&mux);
 				short_sleep(0.0005);
+			}
 			break ;
     }
 	memcpy(buffer, acs->data, bufferLength);
@@ -646,7 +652,5 @@ uint32_t Cmd_reboot (
 exit :
     return (error);
 }
-
-
 
 

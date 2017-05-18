@@ -73,7 +73,7 @@ static pthread_t poll_thread= 0,
 				 lgdst_thread = 0,
 				 ctrl_thr_recv = 0,
 				 ctrl_thr_send = 0;
-static pthread_mutex_t mux;
+/*static*/ pthread_mutex_t mux;
 int tag=0;
 
 int chsel_2072 = 0;
