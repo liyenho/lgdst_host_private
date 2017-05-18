@@ -9,7 +9,35 @@ typedef int bool;
 #define SHMKEY_TX 									1234	 //tx shared memory key for IPC between lgdst/core
 #define SHMKEY_RX 									5678	 //rx shared memory key for IPC between lgdst/core
 #define NON_NIOS
+//#define UART_COMM
+#ifdef UART_COMM
+ //#define DBG_UART_REC
+ //#define DBG_UART_SND
+	#define MAVLINK_START_SIGN		0x55
+	#define MAVLINK_HDR_LEN				6
+	#define START_SIGN_LEN				1  // one byte
+	#define CHKSUM_LEN							2  // two bytes
+	#define X25_INIT_CRC 							0xffff
+  #define MAX_MSG_LEN						85  // max msg length allowed
+	static inline void crc_accumulate(uint8_t data, uint16_t *crcAccum)
+	{
+	        //Accumulate one byte of data into the CRC
+	        uint8_t tmp;
 
+	        tmp = data ^ (uint8_t)(*crcAccum &0xff);
+	        tmp ^= (tmp<<4);
+	        *crcAccum = (*crcAccum>>8) ^ (tmp<<8) ^ (tmp <<3) ^ (tmp>>4);
+	}
+	static inline uint16_t crc_calculate(const uint8_t* pBuffer, uint16_t length)
+	{
+	        uint16_t crcTmp;
+	        crcTmp = X25_INIT_CRC;
+		while (length--) {
+	                crc_accumulate(*pBuffer++, &crcTmp);
+	        }
+	        return crcTmp;
+	}
+#endif
 #define CTRL_OUT									(LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_ENDPOINT_OUT)
 #define CTRL_IN										(LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_ENDPOINT_IN)
 #define USB_RQ										0x04

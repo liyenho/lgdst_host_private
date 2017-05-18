@@ -20,9 +20,11 @@
 #include <math.h>
 #include <libusb.h>
 #include <assert.h>
-
 #include "rf2072_set.h"
 #include "usb_tx.h"
+#ifdef UART_COMM
+  #include <termios.h>
+#endif
 #include "it9510.h"
 #include "firmware.h"
 #include "platform_it9517.h"
@@ -62,13 +64,78 @@ void fsm_time_ant_sw() ; // extr declr for timer.c
 static FILE *file = NULL;
 unsigned char audbuf[FRAME_SIZE_A*FRAME_BUFFS]__attribute__((aligned(8)));
 unsigned char vidbuf[FRAME_SIZE_V2*FRAME_BUFFS]__attribute__((aligned(8)));
-
-
 static bool detached = false;
 struct libusb_device_handle *devh = NULL;
+#ifdef UART_COMM
+ #define HANDSHAKE_UART(AT_cmd, ccnt, label_again) \
+			pthread_mutex_lock(&mux); \
+   label_again: \
+			 usleep(/*300*/1000); /*just keep this long enough to serve sync event*/ \
+			write (fd_uart, AT_cmd, ccnt); \
+			 usleep(400/*5000*/); /*longer than 3 bytes went across serial line @ 115200 bauds*/ \
+			 r = read (fd_uart, &i, 3); \
+			if (3 ==r) { \
+				char *pa = (char*)&i; \
+				if (1==do_exit && strncmp("ATK",pa, 3)) { \
+					goto label_again; /*we must see"ATA" as acknowledge*/ \
+				} \
+			} \
+			else { \
+				if (1==do_exit) \
+					goto label_again; \
+			} \
+			pthread_mutex_unlock(&mux);
+ #define HANDSHAKE_UART_LOG(AT_cmd, ccnt, label_again) \
+			pthread_mutex_lock(&mux); \
+   label_again:  \
+			 usleep(600/*1000*/); /*longer than 2 bytes went across serial line @ 115200 bauds*/ \
+			write (fd_uart, AT_cmd, ccnt); \
+			 usleep(400/*1000*/); /*not sure if atmel has something to log out*/ \
+			 r = read (fd_uart, &i, 3); \
+			if (3 ==r) { \
+				char *pa = (char*)&i; \
+				if (1==do_exit && strncmp("ATK",pa, 3)) { \
+					goto label_again; /*we must see"ATA" as acknowledge*/ \
+				} \
+			} \
+			else { \
+				if (1==do_exit) \
+					goto label_again; \
+			} \
+			pthread_mutex_unlock(&mux);
+ #define HANDSHAKE_ACK_WR \
+ 			usleep(200); \
+			/*pthread_mutex_lock(&mux);*/ \
+			write (fd_uart, "ATK", 3); \
+			/*pthread_mutex_unlock(&mux);*/
+ #define HANDSHAKE_ACK_RD(label) \
+ 			i = 0; \
+ 			while(3 > i++) { \
+ 				usleep(/*600*/300); \
+				/*pthread_mutex_lock(&mux);*/ \
+				r = read (fd_uart, &i, 3); \
+				/*pthread_mutex_unlock(&mux);*/ \
+				if (3 ==r) { \
+					char *pa = (char*)&i; \
+					if (!strncmp("ATK",pa, 3)) \
+						break ; \
+				} \
+			} if (3 == i) {\
+				pthread_mutex_unlock(&mux); \
+				failed = true; \
+				puts("failed to get acked"); \
+				goto label ; \
+			} \
+			else failed = false;
+  const char *portname = "/dev/ttyUSB0";
+  int fd_uart = 0; // file handle of uart port
+#endif
 volatile int do_exit = 0;	// main loop breaker
 pthread_t poll_thread= 0,
 		  lgdst_thread = 0,
+#ifdef UART_COMM
+			logging_thread = 0,
+#endif
 		  ctrl_thr_recv = 0,
 		  ctrl_thr_send = 0;
 pthread_mutex_t mux;
@@ -101,12 +168,18 @@ void at_exit(int status)
 		if (lgdst_thread)
 			pthread_join(lgdst_thread, NULL);
 #if defined(RADIO_SI4463)
+ #if defined(DBG_UART_SND)
 		pthread_join(ctrl_thr_recv, NULL);
+ #endif
+ #if defined(DBG_UART_REC)
 		pthread_join(ctrl_thr_send, NULL);
+ #endif
 #endif
 		close(udpin_socket);
 		close(udpout_socket);
-
+#ifdef UART_COMM
+		close(fd_uart);
+#endif
 #if defined(RADIO_SI4463)
 		close(ctrlsnd_socket);
 		close(ctrlrcv_socket);
@@ -164,16 +237,101 @@ int short_sleep(double sleep_time)
 #ifdef RADIO_SI4463
 void *ctrl_poll_recv(void *arg)
 {
-	int r, i;
+	int r, r1, i;
 	unsigned char validdataflag=0;
 	long pv_wrbyte=0;
+#ifdef UART_COMM
+			uint8_t *pb, radio_rpacket1[RADIO_USR_RX_LEN+MAVLINK_HDR_LEN+CHKSUM_LEN];
+			// constant payload length from atmel ctrl link
+				struct timeval uart_tv, uart_tv1;
+				uart_tv.tv_sec = 0;
+		// this field shall be adapted to actual baud rate (115200) selected, also depends upon
+		// uart traffic convention (8N1) selected, also allowed tolerance on timing constraint,
+		// this field is most crucial setup!!! liyenho
+				uart_tv.tv_usec = 3/*1.5*/*(1000000*10+115200-1)/115200*sizeof(radio_rpacket1);
+/****************************************************
+ 	#include <sched.h>
+ 		struct sched_param sp;
+ 		uint32_t sch_pol, sch_prio_x ;
+ 		int err ;
+ 		  err = sched_getscheduler(0);
+		  if (0 > err)
+		  	 perror_exit ("sched_getscheduler failed", err);
+		  sch_pol = err;
+		  err = sched_get_priority_max(SCHED_FIFO);
+		  if (0 > err)
+		  	 perror_exit ("sched_get_priority_max failed", err);
+		  // get highest possible prio for SCHED_FIFO scheme
+		  sch_prio_x = err;
+****************************************************/
+#endif
 	while (1==do_exit) {
-		bool ctrl_sckt_ok = *(bool*)arg;
+		bool failed_to_get, ctrl_sckt_ok = *(bool*)arg;
 		if (ctrl_sckt_ok) {
+#ifndef UART_COMM
 			pthread_mutex_lock(&mux);
 			libusb_control_transfer(devh,CTRL_IN, USB_RQ,RADIO_COMM_VAL,RADIO_DATA_RX_IDX,radio_rpacket, sizeof(radio_rpacket), 0);
 			pthread_mutex_unlock(&mux);
-
+#else  //UART_COMM
+	//		HANDSHAKE_UART("AT4", 3, again)
+				uart_tv1 = uart_tv;
+				failed_to_get = false;
+				fd_set uart_fd;
+				FD_ZERO(&uart_fd);
+				FD_SET(fd_uart,&uart_fd);
+			pthread_mutex_lock(&mux);
+/****************************************************
+			sp.sched_priority = sch_prio_x;
+			err = sched_setscheduler(0,SCHED_FIFO,&sp);
+		  if (0 > err)
+		  	 perror_exit ("sched_setscheduler failed", err);
+****************************************************/
+			r = sizeof(radio_rpacket1);
+			pb = radio_rpacket1;
+			while(1==do_exit && 0!=r) {
+				int err = select(fd_uart+1,&uart_fd,0,0,&uart_tv1);
+				if(err<0) {
+					perror_exit("uart select failed", err);
+				} else if (0==err) {
+					failed_to_get = true;
+					puts("failed to get packet");
+					break; // force to send ack to re-set send side on the other end
+				}
+				if (FD_ISSET(fd_uart,&uart_fd)) {
+					// Ethernet input data processing
+					r1 = read (fd_uart, pb, r);
+					r -= r1;
+					pb += r1;
+				}
+			}
+				HANDSHAKE_ACK_WR
+				pthread_mutex_unlock(&mux);
+/****************************************************
+			sp.sched_priority = 0;
+			err = sched_setscheduler(0,sch_pol,&sp);
+		  if (0 > err)
+		  	 perror_exit ("sched_setscheduler failed", err);
+****************************************************/
+			if (!failed_to_get) {
+				uint16_t crc, crc0 ;
+				crc= crc_calculate(radio_rpacket1+START_SIGN_LEN,
+											RADIO_USR_RX_LEN \
+											+MAVLINK_HDR_LEN \
+											-START_SIGN_LEN);
+				crc0 = *(radio_rpacket1+sizeof(radio_rpacket1)-CHKSUM_LEN);
+				crc0 |= ((uint16_t)*(radio_rpacket1+sizeof(radio_rpacket1)-(CHKSUM_LEN-1))<<8);
+	//printf("crc = 0x%04x, crc0 = 0x%04x\n",crc, crc0);
+				if (crc == crc0 ) {
+			#if defined(DBG_UART_SND)
+					printf("....... received a valid uart packet, %d ......\n",
+								*(radio_rpacket1+2));
+			#endif
+					memcpy(radio_rpacket,
+										radio_rpacket1+MAVLINK_HDR_LEN,
+										RADIO_USR_RX_LEN);
+				}
+			}
+#endif
 			validdataflag=(radio_rpacket[RADIO_USR_RX_LEN]&0x01);
 			if(validdataflag==0x01) //got valid payload
 			{
@@ -211,7 +369,6 @@ void *ctrl_poll_recv(void *arg)
 				}//end valid data
 			}// user packet dataloss check
 
-
 			usleep(CTRL_RECV_POLLPERIOD);
 		} //ctrl_sckt_ok
 	}//(1==do_exit)
@@ -219,10 +376,9 @@ void *ctrl_poll_recv(void *arg)
 
 void *ctrl_poll_send(void *arg)
 {  //usb send to module
-	int r,tx_cnt= 0, err, rcvsize;
+	int i, r, tx_cnt= 0, err, rcvsize;
 	uint32_t ctrl_send_fifolvl_data_l=CTRL_SEND_FIFODEPTH;
 	bool ctrl_sckt_ok = *(bool*)arg;
-
 	while (1==do_exit) {
 
 		rcvsize = 0;
@@ -246,19 +402,71 @@ void *ctrl_poll_send(void *arg)
 		}
 		// ------------------------------------------------
 		if (sizeof(radio_tpacket) == rcvsize) {
+#ifndef UART_COMM
 			pthread_mutex_lock(&mux);
 			libusb_control_transfer(devh,CTRL_OUT, USB_RQ,RADIO_COMM_VAL,RADIO_DATA_TX_IDX,radio_tpacket, sizeof(radio_tpacket), 0);
 			pthread_mutex_unlock(&mux);
+#else  //UART_COMM
+			uint8_t radio_tpacket1[RADIO_USR_TX_LEN+MAVLINK_HDR_LEN+CHKSUM_LEN];
+			bool failed = false;
+again:
+	//		HANDSHAKE_UART("AT3", 3, again0)
+			*(radio_tpacket1) = MAVLINK_START_SIGN;
+			*(radio_tpacket1+1) =sizeof(radio_tpacket1) -START_SIGN_LEN;
+			static uint8_t uart_sequ_sent_cnt;
+			if (!failed)
+				*(radio_tpacket1+2) = uart_sequ_sent_cnt++;
+			memcpy(radio_tpacket1+MAVLINK_HDR_LEN,
+								radio_tpacket, RADIO_USR_RX_LEN);
+			uint16_t crc ;
+			crc= crc_calculate(radio_tpacket1+START_SIGN_LEN,
+										sizeof(radio_tpacket1)-START_SIGN_LEN-CHKSUM_LEN);
+			*(radio_tpacket1+sizeof(radio_tpacket1)-CHKSUM_LEN) = (unsigned char)crc;
+			*(radio_tpacket1+sizeof(radio_tpacket1)-(CHKSUM_LEN-1)) = (unsigned char)(crc>>8);
+			pthread_mutex_lock(&mux);
+	//		write (fd_uart, &r, sizeof(short)); // two bytes shall be sufficient for all cases
+			write (fd_uart,
+					radio_tpacket1,
+					sizeof(radio_tpacket1));
+			HANDSHAKE_ACK_RD(again)
+			pthread_mutex_unlock(&mux);
+		#if defined(DBG_UART_REC)
+				printf("....... sent a acked uart packet, %d ......\n",
+							*(radio_tpacket1+2));
+		#endif
+#endif
 		}
 
 		usleep(CTRL_SEND_POLLPERIOD);
 	}
 }
 #endif //RADIO_SI4463
+#ifdef UART_COMM
+void *logging_poll(void *arg)
+{  //recv module log mesgs
+  char msg_buf[MAX_MSG_LEN];
+  int i, r ;
+	while (1==do_exit) {
+		bool failed = false;
+loop:
+	//	HANDSHAKE_UART_LOG("AT0", 3, loop0)
+		pthread_mutex_lock(&mux);
+			 r = read (fd_uart,
+								msg_buf,
+								sizeof(msg_buf));
+			if (0 != r) {
+				HANDSHAKE_ACK_RD(loop)
+				printf("%s", msg_buf);
+			}
+		pthread_mutex_unlock(&mux);
+		short_sleep(0.25);
+	}
+}
+#endif
 
 void *poll_thread_main(void *arg)
 {
-	int r=0, s, video, frms = 0, radio_cnt=0;
+	int i, r=0, s, video, frms = 0, radio_cnt=0;
 	long pa_wrbyte=0, pv_wrbyte=0;
 	bool ctrl_sckt_ok = false;
 	int tx_cnt= 0, rx_cnt= 0;
@@ -291,13 +499,26 @@ void *poll_thread_main(void *arg)
 	while (!ready_wait_for_mloop) ;
 
 	si4463_radio_up = true;
+#ifdef UART_COMM
+	puts("send uart cmd to start up ctrl uart process");
+			HANDSHAKE_UART("AT0", 3, uart_port_start)
+#endif
 	r=0;
+#ifdef DBG_UART_SND
 	r = pthread_create(&ctrl_thr_recv, NULL, ctrl_poll_recv, &ctrl_sckt_ok);
+#endif
 	if (0 != r)
 		perror_exit("ctrl recv thread creation error", r);
+#ifdef DBG_UART_REC
 	r = pthread_create(&ctrl_thr_send, NULL, ctrl_poll_send, &ctrl_sckt_ok);
+#endif
 	if (0 != r)
 		perror_exit("ctrl send thread creation error", r);
+#ifdef UART_COMM
+	//r = pthread_create(&logging_thread, NULL, logging_poll, NULL);
+	if (0 != r)
+		perror_exit("atmel logging thread creation error", r);
+#endif
 //#define TIME_ANT_SW
  #ifdef TIME_ANT_SW
 	struct timeval tstart, tend, tdelta,
@@ -332,10 +553,12 @@ void *poll_thread_main(void *arg)
 			}
  #endif
 	}
-
-	pthread_join(ctrl_thr_recv, NULL);
+#if defined(DBG_UART_REC)
 	pthread_join(ctrl_thr_send, NULL);
-
+#endif
+#if defined(DBG_UART_SND)
+	pthread_join(ctrl_thr_recv, NULL);
+#endif
 	printf("poll thread shutting down\n");
 	return NULL;
 }
@@ -542,15 +765,68 @@ int cpld_firmware_update(int mode, const char*file_name)
 	}
 	return 0;
 }
+#ifdef UART_COMM
+int set_interface_attribs (int fd, int speed, int parity)
+{
+        struct termios tty;
+        memset (&tty, 0, sizeof tty);
+        if (tcgetattr (fd, &tty) != 0)
+        {
+                perror_exit ("error from tcgetattr",-1);
+        }
+
+        cfsetospeed (&tty, speed);
+        cfsetispeed (&tty, speed);
+
+        tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8;     // 8-bit chars
+        // disable IGNBRK for mismatched speed tests; otherwise receive break
+        // as \000 chars
+        tty.c_iflag &= ~IGNBRK;         // disable break processing
+        tty.c_lflag = 0;                // no signaling chars, no echo,
+                                        // no canonical processing
+        tty.c_oflag = 0;                // no remapping, no delays
+        tty.c_cc[VMIN]  = 0;            // read doesn't block
+        tty.c_cc[VTIME] = 5;            // 0.5 seconds read timeout
+
+        tty.c_iflag &= ~(IXON | IXOFF | IXANY); // shut off xon/xoff ctrl
+
+        tty.c_cflag |= (CLOCAL | CREAD);// ignore modem controls,
+                                        // enable reading
+        tty.c_cflag &= ~(PARENB | PARODD);      // shut off parity
+        tty.c_cflag |= parity;
+        tty.c_cflag &= ~CSTOPB;
+        tty.c_cflag &= ~CRTSCTS;
+
+        if (tcsetattr (fd, TCSANOW, &tty) != 0)
+        {
+                perror_exit ("error from tcsetattr",-2);
+        }
+        return 0;
+}
+
+void set_blocking (int fd, int should_block)
+{
+        struct termios tty;
+        memset (&tty, 0, sizeof tty);
+        if (tcgetattr (fd, &tty) != 0)
+        {
+                perror_exit ("error from tggetattr",-3);
+        }
+
+        tty.c_cc[VMIN]  = should_block ? 1 : 0;
+        tty.c_cc[VTIME] = 5;            // 0.5 seconds read timeout
+
+        if (tcsetattr (fd, TCSANOW, &tty) != 0)
+                perror_exit ("error setting term attributes",-4);
+}
+#endif
 #if 0
 int init_device(void)
 #else
 init_device(int argc,char **argv)
 #endif
 {
-
 	int r = 1, blksz=0, tag;
-	float delay ;
 
 	do_exit = 1;
 	pthread_mutex_init(&mux, NULL);
@@ -617,6 +893,24 @@ init_device(int argc,char **argv)
 	printf("claimed interface\n");
 	if (system_upgrade) // no need to bring up other proc threads,
 		goto upgrade_next;
+#ifdef UART_COMM
+	fd_uart = open (portname, O_RDWR | O_NOCTTY | O_SYNC);
+	if (fd_uart < 0)
+	{
+		char err_msg[80]= {"error opening: "};
+			strcat(err_msg, portname); strcat(err_msg,"\n");
+		perror_exit (err_msg,-5 );
+	}
+	set_interface_attribs (fd_uart, B115200, 0);  // set speed to 115,200 bps, 8n1 (no parity)
+	set_blocking (fd_uart, 0);                // set no blocking
+ #if false
+	write (fd_uart, "hello!\n", 7);	// send 7 character greeting
+	short_sleep(0.1); // validate echo after 0.1 sec
+	char buf [16];
+	r = read (fd_uart, buf, sizeof buf);  // read up to 100 characters if ready to read
+	printf("echo from atmel uart: %s\n",buf);
+ #endif
+#endif
 	// send system restart command...
 	libusb_control_transfer(devh,CTRL_OUT, USB_RQ,USB_SYSTEM_RESTART_VAL,USB_HOST_MSG_IDX,NULL, 0, 0);
 
@@ -666,6 +960,9 @@ uint32_t deinit_device(int rcode)
 #if defined(RADIO_SI4463)
 	close(ctrlsnd_socket);
 	close(ctrlrcv_socket);
+#endif
+#ifdef UART_COMM
+	close(fd_uart);
 #endif
 _fail:
 	libusb_release_interface(devh,USB_DEV_INTF);
@@ -966,7 +1263,7 @@ int main(int argc,char **argv)
 {
 	struct timeval start ,end1,end2;
 	unsigned long diff,diff1;
-	int r=0;
+	int i, r=0;
 
 	gettimeofday(&start,NULL);
 	uint16_t bandwidth = 6000;
@@ -1218,7 +1515,8 @@ download:
   	return 0;
   }
 #endif
-#if /*true*/false  // test atmel encapsulation of asic host
+#ifdef UART_COMM // test atmel encapsulation of asic host
+  #if false  // going thru serial uart now...
 	// initialize video subsystem inside atmel
 		 libusb_control_transfer(devh,
 		 													CTRL_OUT,
@@ -1237,6 +1535,16 @@ download:
 															NULL,
 															0,
 															0);
+  #else  //UART_COMM
+	puts("send uart cmd to init video sub-system");
+			HANDSHAKE_UART("AT1", 3, init_again_v)
+	if (1==do_exit)
+		short_sleep(20); // allowed 30 sec for video sub-system comes up...
+	puts("send uart cmd to start video sub-system");
+			HANDSHAKE_UART("AT2", 3, start_again_v)
+	if (1==do_exit)
+		short_sleep(10); // allowed 10 sec for video sub-system streams up...
+  #endif
 printf("line # = %d\n", __LINE__);
 	udpin_init();
 #else
@@ -1282,7 +1590,7 @@ printf("line # = %d\n", __LINE__);
 	gettimeofday(&end1,NULL);
 	error=it9517_enable_transmission_mode(1);
 	if(error)goto exit;
-	//	gettimeofday(&end1,NULL);
+	 gettimeofday(&end1,NULL);
 #endif
 	int32_t  msg[80]; // access buffer
 	//uint16_t *conv= (uint16_t*)acs->data;
@@ -1330,8 +1638,11 @@ printf("line # = %d\n", __LINE__);
   #endif
 				tpbprtcnt=0;
 			}
+			static int fcnt = 0;
+			if (100 == ++fcnt) {
 						printf("send a transport packet block,%d\n",tag);
-
+					fcnt = 0;
+			}
 		}
 
 
@@ -1368,8 +1679,8 @@ void fsm_time_ant_sw() {
 		case 2: it9517_adjust_output_gain(2);
 						break;
 		case 3: it9517_adjust_output_gain(3);
-		 				pthread_mutex_lock(&mux);
-						libusb_control_transfer(devh,
+						pthread_mutex_lock(&mux);
+		 				libusb_control_transfer(devh,
 		 													CTRL_OUT,
 		 													USB_RQ,
 															USB_VID_ANT_SWITCH,
