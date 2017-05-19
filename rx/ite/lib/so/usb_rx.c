@@ -1151,9 +1151,13 @@ int init_rf2072(void)
 	acs->access = TS_VID_ACTIVE;
 	acs->dcnt = 0; // no param
 	acs->addr = 0x0; // by wire not addr
+	pthread_mutex_lock(&mux);
 	libusb_control_transfer(devh,CTRL_OUT,USB_RQ,USB_HOST_MSG_TX_VAL,USB_HOST_MSG_IDX,(unsigned char*)acs, sizeof(*acs), 0);
+	pthread_mutex_unlock(&mux);
 	short_sleep(0.2);
+	pthread_mutex_lock(&mux);
 	libusb_control_transfer(devh, CTRL_OUT, USB_RQ, 0x07, 0, NULL, 0, 0);
+	pthread_mutex_unlock(&mux);
 #endif
 	tag += 1;
 #ifndef LIB
@@ -1583,9 +1587,13 @@ int32_t msg[80]; // access buffer
 	acs->access = TS_VID_ACTIVE;
 	acs->dcnt = 0; // no param
 	acs->addr = 0x0; // by wire not addr
+	pthread_mutex_lock(&mux);
 	libusb_control_transfer(devh,CTRL_OUT,USB_RQ,USB_HOST_MSG_TX_VAL,USB_HOST_MSG_IDX,(unsigned char*)acs, sizeof(*acs), 0);
+	pthread_mutex_unlock(&mux);
 	short_sleep(0.2);
+	pthread_mutex_lock(&mux);
 	libusb_control_transfer(devh, CTRL_OUT, USB_RQ, 0x07, 0, NULL, 0, 0);
+	pthread_mutex_unlock(&mux);
 #endif
 _exit:
 	return error;
