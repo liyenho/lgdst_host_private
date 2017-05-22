@@ -148,6 +148,7 @@ typedef enum  {
 #define USB_ITE_FW_VAL							0x6
 #define ITE_FW_HDR_LEN							(4)
 
+extern bool stream_on ; // ctrl xfer access speed flag, liyenho
 intmax_t get_file_size(const char* file_path);
 void DieWithError(char *errorMessage);
 void at_exit(int status);

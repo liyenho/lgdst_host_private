@@ -92,8 +92,9 @@ uint32_t IT9510User_delay (
      *  delay(dwMs);
      *  return (0);
      */
+	int kilo = (stream_on)? 1000 : 250;
 	if(dwMs > 0)
-		usleep(dwMs*250);
+		usleep(dwMs*kilo); // cheating with a quarter of actual delay requested, liyenho
     return (ModulatorError_NO_ERROR);
 }
 

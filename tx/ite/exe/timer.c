@@ -75,9 +75,9 @@ int timer_kickoff(int wakeperiod)
   struct itimerval oldtime, newtime;
     /* arm wakeup timer */
   signal(SIGALRM, wakeup_handler);
-  newtime.it_interval.tv_sec = /*WAKE_PERIOD_SEC*/wakeperiod/1000000;
+  newtime.it_interval.tv_sec = wakeperiod/1000000;
   newtime.it_interval.tv_usec = wakeperiod%1000000;
-  newtime.it_value.tv_sec = /*WAKE_PERIOD_SEC*/wakeperiod/1000000;
+  newtime.it_value.tv_sec = wakeperiod/1000000;
   newtime.it_value.tv_usec = wakeperiod%1000000;
   if(setitimer(ITIMER_REAL, &newtime,&oldtime)<0)
   { ERRA"itimer arm failed...\n"ERRB  return -1; }

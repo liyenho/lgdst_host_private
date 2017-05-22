@@ -4,8 +4,10 @@
 #include <stdint.h>
 #include <time.h>
 #include <unistd.h>
+#include <pthread.h> // for thread-safe design
 #include "platform_it9517.h"
 
+static pthread_mutex_t mux_thr; // protect at 1st tier (user level)
 uint16_t I2c_IO_PORT = 0x38;
 IQtable IQ_tableEx[65536];
 IT9510INFO eagle;
@@ -45,8 +47,9 @@ uint32_t it9517_loadIQ_calibration_table (const char*file_name)
 		calibrationInfo.ptrIQtableEx = IQ_tableEx;
 		calibrationInfo.tableGroups = groups;
 		calibrationInfo.tableVersion = version;
-
+		pthread_mutex_lock(&mux_thr);
 		error = IT9510_setIQtable(&eagle, calibrationInfo);
+		pthread_mutex_unlock(&mux_thr);
 		if(error)
 			printf("ModulatorError_NULL_PTR \n");
 		else
@@ -66,6 +69,7 @@ uint32_t it9517_loadIQ_calibration_table (const char*file_name)
 //stream_type= SERIAL_TS_INPUT
 uint32_t it9517_initialize (uint8_t id_bus,TsInterface stream_type) 
 {
+	pthread_mutex_init(&mux_thr, NULL);
 	uint32_t error = ModulatorError_NO_ERROR;
 	uint8_t var[2];
 	uint8_t chip_version = 0;
@@ -75,21 +79,25 @@ uint32_t it9517_initialize (uint8_t id_bus,TsInterface stream_type)
 
 	Bus_id  =id_bus;
 	tsin_streamType = stream_type;
-
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_initialize (&eagle, tsin_streamType, Bus_id, IT9510User_IIC_ADDRESS);
+	pthread_mutex_unlock(&mux_thr);
 	if (error) goto exit;
-
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_readRegister(&eagle, Processor_LINK, 0x1222, &chip_version);
+	pthread_mutex_unlock(&mux_thr);
 	if (error) goto exit;
-
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_readRegisters(&eagle, Processor_LINK, 0x1222+1, 2, var);
+	pthread_mutex_unlock(&mux_thr);
 	if (error) goto exit;
 
 	chip_Type = var[1]<<8 | var[0];
 	//printf("chip_Type = %x chip_version=%x\n",chip_Type,chip_version);
 	printf("IT9510 Initialize successful.\n");
+	pthread_mutex_lock(&mux_thr);
 	IT9510User_LoadDCCalibrationTable(&eagle);
-
+	pthread_mutex_unlock(&mux_thr);
 exit:
 	if (error)  printf("error=%x,%d\n",error,__LINE__);
 	return error;
@@ -101,15 +109,18 @@ uint32_t it9517_monitor_version (void)
 	uint32_t version = 0;
 
 	printf("API Version = %04x.%08x.%02x\n", IT9510_Version_NUMBER, IT9510_Version_DATE, IT9510_Version_BUILD);
-
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_getFirmwareVersion (&eagle, Processor_LINK, &version);
+	pthread_mutex_unlock(&mux_thr);
 	if (error) {
 		printf("IT9510 getFirmwareVersion(LINK) failed! Error = 0x%08x\n", error);
 
 	} else {
 		printf("IT9510 LINK FW Version = 0x%08x\n", version);
 	}
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_getFirmwareVersion (&eagle, Processor_OFDM, &version);
+	pthread_mutex_unlock(&mux_thr);
 	if (error) {
 		printf("IT9510 getFirmwareVersion(OFDM) failed! Error = 0x%08x\n", error);
 
@@ -123,9 +134,9 @@ uint32_t it9517_monitor_version (void)
 uint32_t it9517_suspend(uint8_t enable) 
 {
 	uint32_t error = ModulatorError_NO_ERROR;
-
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_suspendMode(&eagle,enable);
-
+	pthread_mutex_unlock(&mux_thr);
 	if (error) 
 		printf("IT9510 suspend failed! error = 0x%08x\n", error);
 	else 
@@ -137,9 +148,9 @@ uint32_t it9517_suspend(uint8_t enable)
 uint32_t it9517_reset(void) 
 {
 	uint32_t error = ModulatorError_NO_ERROR;
-
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_reset(&eagle);
-
+	pthread_mutex_unlock(&mux_thr);
 	if (error) 
 		printf("IT9510 reset failed! error = 0x%08x\n", error);
 	else 
@@ -151,9 +162,9 @@ uint32_t it9517_reset(void)
 uint32_t it9517_reboot(void) 
 {
 	uint32_t error = ModulatorError_NO_ERROR;
-
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_TXreboot(&eagle);
-
+	pthread_mutex_unlock(&mux_thr);
 	if (error) 
 		printf("IT9510 TXreboot Failed! Error = 0x%08x\n", error);
 	else 
@@ -185,8 +196,9 @@ uint32_t it9517_set_channel_modulation(ChannelModulation channel_modulation,Null
 	//printf ("Null packet Mode? 1:SequentialMode, 2:NormalMode\n");
 
 	eagle.nullPacketMode = mode;
-
+	pthread_mutex_lock(&mux_thr);
 	error=IT9510_setNullPacketMode(&eagle,eagle.nullPacketMode);
+	pthread_mutex_unlock(&mux_thr);
 	if (error){ 
 		printf("IT9510 set NullPacketMode failed.\n");
 		goto exit;
@@ -194,8 +206,9 @@ uint32_t it9517_set_channel_modulation(ChannelModulation channel_modulation,Null
 	else{
 		printf("IT9510 set NullPacketMode successful.\n");	
 	}
-
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_setTXChannelModulation(&eagle, &channelModulation);
+	pthread_mutex_unlock(&mux_thr);
 	if (error){ 
 		printf("IT9510 setChannelModulation failed.\n");
 		goto exit;
@@ -216,8 +229,9 @@ uint32_t it9517_set_frequency(uint32_t frequency)
 	uint32_t error = ModulatorError_NO_ERROR;
 	uint32_t freq=frequency;
 
-
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_setFrequency (&eagle,freq);
+	pthread_mutex_unlock(&mux_thr);
 	if (error) {
 		printf("IT9510 setFrequency failed.\n");
 
@@ -236,8 +250,9 @@ exit:
 uint32_t it9517_set_ts_interface(TsInterface   streamType)
 {
 	uint32_t error = ModulatorError_NO_ERROR;
-
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_setTsInterface (&eagle,streamType);
+	pthread_mutex_unlock(&mux_thr);
 	if (error) {
 		printf("IT9510 setTsInterface failed.\n");
 
@@ -257,8 +272,9 @@ exit:
 uint32_t it9517_control_power_saving(uint8_t control)
 {
 	uint32_t error = ModulatorError_NO_ERROR;
-
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_controlPowerSaving (&eagle,control);
+	pthread_mutex_unlock(&mux_thr);
 	if (error) {
 		printf("IT9510 controlPowerSaving failed.\n");
 		goto exit;
@@ -279,8 +295,9 @@ uint32_t it9517_acquire_channel(uint32_t frequency,uint16_t bandwidth)
 	uint32_t error = ModulatorError_NO_ERROR;
 	uint32_t freq=frequency;
 	uint16_t bw=bandwidth;
-
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_acquireTxChannel (&eagle,bw,freq);
+	pthread_mutex_unlock(&mux_thr);
 	if (error) {
 		printf("IT9510 acquireTxChannel failed.\n");
 
@@ -300,7 +317,9 @@ exit:
 uint32_t it9517_enable_transmission_mode(uint8_t enable)
 {
 	uint32_t error = ModulatorError_NO_ERROR;
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_setTxModeEnable(&eagle, enable);
+	pthread_mutex_unlock(&mux_thr);
 	if (error){ 
 		printf("IT9510 setTxModeEnable failed.\n");
 		goto exit;
@@ -322,7 +341,9 @@ uint32_t it9517_get_output_gain(void)
 	uint32_t error = ModulatorError_NO_ERROR;
 
 	int gain;
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_getOutputGain(&eagle,&gain);
+	pthread_mutex_unlock(&mux_thr);
 	if(error){
 		printf("IT9510 getOutputGain failed.\n");
 		goto exit;
@@ -342,7 +363,9 @@ uint32_t it9517_get_output_gain_range(uint32_t frequency,uint16_t bandwidth)
 	uint32_t error = ModulatorError_NO_ERROR;
 
 	int min_gain,max_gain;
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_getGainRange(&eagle,frequency,bandwidth,&max_gain,&min_gain);
+	pthread_mutex_unlock(&mux_thr);
 	if(error){
 		printf("IT9510 getGainRange failed.\n");
 		goto exit;
@@ -360,8 +383,9 @@ exit:
 uint32_t it9517_adjust_output_gain(int gain)
 {
 	uint32_t error = ModulatorError_NO_ERROR;
-
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_adjustOutputGain(&eagle,&gain);
+	pthread_mutex_unlock(&mux_thr);
 	if(error){
 		printf("IT9510 AdjustOutputGain failed.\n");
 		goto exit;
@@ -383,8 +407,9 @@ exit:
 uint32_t it9517_control_pidfilter(uint8_t control,uint8_t enable)
 {
 	uint32_t error = ModulatorError_NO_ERROR;
-
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_controlPidFilter(&eagle, control,enable);
+	pthread_mutex_unlock(&mux_thr);
 	if (error) {
 		printf("IT9510 controlPidFilter failed.\n");
 		goto exit;
@@ -405,7 +430,9 @@ exit:
 uint32_t it9517_reset_pidfilter(void)
 {
 	uint32_t error = ModulatorError_NO_ERROR;
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_resetPidFilter(&eagle);
+	pthread_mutex_unlock(&mux_thr);
 	if (error) {
 		printf("IT9510 resetPidFilter failed.\n");
 		goto exit;
@@ -426,8 +453,9 @@ uint32_t it9517_add_pidfilter(uint8_t index,uint32_t value)
 
 	Pid pid;
 	pid.value = value;
-
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_addPidToFilter(&eagle, index, pid);
+	pthread_mutex_unlock(&mux_thr);
 	if (error){ 
 		printf("IT9510 controlPidFilter failed.\n");
 		goto exit;
@@ -444,8 +472,9 @@ exit:
 uint32_t it9517_enable_tps_encryption(uint32_t key)
 {
 	uint32_t error = ModulatorError_NO_ERROR;
-
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_enableTpsEncryption(&eagle, key);
+	pthread_mutex_unlock(&mux_thr);
 	if (error){ 
 		printf("IT9510 enableTpsEncryption failed.\n");
 		goto exit;
@@ -462,8 +491,9 @@ exit:
 uint32_t it9517_disable_tps_encryption(void)
 {
 	uint32_t error = ModulatorError_NO_ERROR;
-
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_disableTpsEncryption(&eagle);
+	pthread_mutex_unlock(&mux_thr);
 	if (error){ 
 		printf("IT9510 disableTpsEncryption failed.\n");
 		goto exit;
@@ -492,20 +522,25 @@ uint32_t it9517_aes_encryption(uint8_t *buf,uint8_t begin,Bool enable)
 		//scanf_s ("%08X", &w_temp);
 		AES_Key[i] = (uint8_t)buf;
 	}
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_setAesEncryptionKey(&eagle, AES_Key);
+	pthread_mutex_unlock(&mux_thr);
 	if(error){
 		printf("IT9510 setAesEncryptionKey failed.\n");
 		goto exit;
 	}else{
 		printf("IT9510 setAesEncryptionKey successful.\n");
 		for(i=0; i<16; i++){
+			pthread_mutex_lock(&mux_thr);
 			IT9510_readRegister(&eagle, Processor_OFDM, p_IT9510_reg_aes_key0_7_0 + i, &temp);
 			printf("Key[%d] = %x \n",i,temp);
+			pthread_mutex_unlock(&mux_thr); // don't place this before printf()
 		}
 
 	}
-
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_setEncryptionStartAddress(&eagle, begin);
+	pthread_mutex_unlock(&mux_thr);
 	if(error){
 		printf("IT9510 setEncryptionStartAddress failed.\n");
 		goto exit;
@@ -513,8 +548,9 @@ uint32_t it9517_aes_encryption(uint8_t *buf,uint8_t begin,Bool enable)
 	else{
 		printf("IT9510 setEncryptionStartAddress successful addr = %d.\n", begin);
 	}
-
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_aesEncryptionEnable(&eagle, enable);
+	pthread_mutex_unlock(&mux_thr);
 	if(error){
 		printf("IT9510 aesEncryptionEnable failed.\n");
 		goto exit;
@@ -535,18 +571,18 @@ exit:
 uint32_t it9517_pcr_restamp(PcrMode pcr_mode,uint8_t enable)
 {
 	uint32_t error = ModulatorError_NO_ERROR;
-
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_setPcrMode (&eagle, pcr_mode); // set to PCR re-stamping mode 1
-
+	pthread_mutex_unlock(&mux_thr);
 	if(error){
 		printf("IT9510 setPcrMode failed.\n");
 		goto exit;
 	}else{
 		printf("IT9510 setPcrMode successful.\n");
 	}
-
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_setPcrModeEnable (&eagle, enable);
-
+	pthread_mutex_unlock(&mux_thr);
 	if(error){
 		printf("IT9510 setPcrMode enable failed.\n");
 		goto exit;
@@ -566,7 +602,9 @@ uint32_t it9517_read_eeprom()
 {
 	uint32_t error = ModulatorError_NO_ERROR;
 	uint8_t buffer[3];
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_readEepromValues (&eagle, 0, 0x0000,  buffer);
+	pthread_mutex_unlock(&mux_thr);
 	if(error){
 		printf("IT9510 readEepromValues failed.\n");
 		goto exit;
@@ -592,7 +630,9 @@ uint32_t it9517_write_eeprom()
 	// Set the value of cell 0x0000 in EEPROM to 0.
 	// Set the value of cell 0x0001 in EEPROM to 1.
 	// Set the value of cell 0x0002 in EEPROM to 2.
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_writeEepromValues (&eagle, 0x0000, 3, buffer);
+	pthread_mutex_unlock(&mux_thr);
 	if(error){
 		printf("IT9510 writeEepromValues failed.\n");
 		goto exit;
@@ -611,7 +651,9 @@ uint32_t it9517_check_tsbuffer_overflow(void)
 {
 	uint32_t error = ModulatorError_NO_ERROR;
 	Bool overflow;
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_isTsBufferOverflow (&eagle,&overflow);	
+	pthread_mutex_unlock(&mux_thr);
 	if(error){
 		printf("IT9510 check tsbuffer overflow failed.\n");
 		goto exit;
@@ -633,7 +675,9 @@ exit:
 uint32_t it9517_finalize(void)
 {
 	uint32_t error = ModulatorError_NO_ERROR;
+	pthread_mutex_lock(&mux_thr);
 	error = IT9510_finalize (&eagle);	
+	pthread_mutex_unlock(&mux_thr);
 	if(error){
 		printf("IT9510_finalize failed.\n");
 		goto exit;
@@ -642,7 +686,7 @@ uint32_t it9517_finalize(void)
 	}
 exit:				
 	if (error)  printf("error=%x,%d\n",error,__LINE__);
-
+	pthread_mutex_destroy(&mux_thr);
 	return error;
 
 }

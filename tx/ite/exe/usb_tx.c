@@ -59,6 +59,7 @@ struct timeval udpin_tv= {0};
 struct sockaddr_in udpin, udpout;
 struct ip_mreq udpin_mreq;
 
+bool stream_on = false ;
 void fsm_time_ant_sw() ; // extr declr for timer.c
 
 static FILE *file = NULL;
@@ -1595,6 +1596,7 @@ printf("line # = %d\n", __LINE__);
 	int32_t  msg[80]; // access buffer
 	//uint16_t *conv= (uint16_t*)acs->data;
 
+	stream_on = true; // slow down ctrl xfer access at real time, liyenho
 	dev_access *acs = (dev_access*)msg;
 	acs->access = TS_VID_ACTIVE;
 	acs->dcnt = 0; // no param
