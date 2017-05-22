@@ -2,11 +2,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h> // for thread-safe design
 
+static pthread_mutex_t mux_thr; // protect at 1st tier (user level)
 IT9130 it9130;
 
 uint32_t it9137_init(void)
 {
+	pthread_mutex_init(&mux_thr, NULL);
 	uint8_t chip_number=1;
 	uint16_t saw_bandwidth=6000;
 	StreamType stream_type =StreamType_DVBT_SERIAL;
@@ -14,7 +17,9 @@ uint32_t it9137_init(void)
 	uint32_t error=Error_NO_ERROR;
 	error=OMEGA_supportLNA(&it9130, 0x03);
 	if(error) return error;
+	pthread_mutex_lock(&mux_thr);
 	error = Demodulator_initialize(&it9130, chip_number,  saw_bandwidth, stream_type,  architecture);
+	pthread_mutex_unlock(&mux_thr);
 	if(error){
 		printf("IT9133 initialize failed, error = 0x%x.\n", error);
 	}
@@ -26,11 +31,13 @@ uint32_t it9137_init(void)
 uint32_t it9137_deinit(void)
 {
 	uint32_t error=Error_NO_ERROR;
+	pthread_mutex_lock(&mux_thr);
 	error=Demodulator_finalize(&it9130);
+	pthread_mutex_unlock(&mux_thr);
 	if(error){
 		printf("IT9133 deinit failed, error = 0x%x.\n", error);
 	}
-
+	pthread_mutex_destroy(&mux_thr);
 	return error;
 }
 
@@ -39,7 +46,9 @@ uint32_t it9137_deinit(void)
 uint32_t it9137_reset(void)
 {
 	uint32_t error=Error_NO_ERROR;
+	pthread_mutex_lock(&mux_thr);
 	error=Demodulator_reset(&it9130);
+	pthread_mutex_unlock(&mux_thr);
 	if(!error){
 
 		printf("IT9133  reset ok.\n");
@@ -52,7 +61,9 @@ uint32_t it9137_reset(void)
 uint32_t it9137_reboot(void)
 {
 	uint32_t error=Error_NO_ERROR;
+	pthread_mutex_lock(&mux_thr);
 	error=Demodulator_reboot(&it9130);
+	pthread_mutex_unlock(&mux_thr);
 	if(!error){
 
 		printf("IT9133 reboot ok.\n");
@@ -65,15 +76,17 @@ uint32_t it9137_get_firmwareversion(void)
 	uint32_t error=Error_NO_ERROR;
 	uint32_t link_firmwareversion;
 	uint32_t ofdm_firmwareversion;
-
+	pthread_mutex_lock(&mux_thr);
 	error=Demodulator_getFirmwareVersion(&it9130, Processor_LINK, &link_firmwareversion);
+	pthread_mutex_unlock(&mux_thr);
 	if(error){
 		printf("IT9133 getFirmwareVersion failed, error = 0x%x.\n", error);
 	}else{
 		printf("link_firmwareversion=0x%x\n",link_firmwareversion);
 	}
-
+	pthread_mutex_lock(&mux_thr);
 	error=Demodulator_getFirmwareVersion(&it9130, Processor_OFDM, &ofdm_firmwareversion);
+	pthread_mutex_unlock(&mux_thr);
 	if(error){
 		printf("IT9133 getFirmwareVersion failed, error = 0x%x.\n", error);
 	}else{
@@ -89,15 +102,17 @@ uint32_t it9137_acquire_channel(uint8_t chip,uint32_t frequency,uint16_t bandwid
 
 	uint32_t error=Error_NO_ERROR;
 	Booll locked;
-
+	pthread_mutex_lock(&mux_thr);
 	error= Demodulator_acquireChannel(&it9130, chip,  bandwidth, frequency);
-
+	pthread_mutex_unlock(&mux_thr);
 	if(error){
 		printf("IT9133 acquireChannel failed, error = 0x%x.\n", error);
 	}else{
 		printf("frequency=%d,bandwidth=%d\n",frequency,bandwidth);
 	}
+	pthread_mutex_lock(&mux_thr);
 	error=Demodulator_isLocked(&it9130, chip, &locked);
+	pthread_mutex_unlock(&mux_thr);
 	printf("locked=%d\n",locked);
 	if(error){
 		printf("IT9133 isLocked failed, error = 0x%x.\n", error);
@@ -116,7 +131,9 @@ uint32_t it9137_scan_channel(uint8_t chip,uint32_t start_frequency,uint32_t end_
 	uint32_t  frequency;
 	long strengthdbm;
 	for (frequency =start_frequency ; frequency <= end_frequency; frequency += bandwidth) {
+		pthread_mutex_lock(&mux_thr);
 		error = Demodulator_acquireChannel( &it9130, chip, bandwidth, frequency);
+		pthread_mutex_unlock(&mux_thr);
 		if (error) {
 			printf ("IT9133 acquireChannel failed, error = 0x%x.\n", error);
 
@@ -125,7 +142,9 @@ uint32_t it9137_scan_channel(uint8_t chip,uint32_t start_frequency,uint32_t end_
 			printf("frequency=%d,bandwidth=%d\n",frequency,bandwidth);
 		}
 		usleep(400000);	
+		pthread_mutex_lock(&mux_thr);
 		error=Demodulator_getSignalStrengthDbm(&it9130, chip, &strengthdbm);
+		pthread_mutex_unlock(&mux_thr);
 		if(!error){
 
 			printf("the signal strength is %ld\n",strengthdbm);
@@ -141,7 +160,9 @@ uint32_t it9137_get_if_agc(uint8_t chip)
 {
 	uint32_t error=Error_NO_ERROR;
 	uint8_t if_agc;
+	pthread_mutex_lock(&mux_thr);
 	error=Demodulator_getIfAgcGain(&it9130, chip,&if_agc);
+	pthread_mutex_unlock(&mux_thr);
 	if(error){
 		printf("IT9133 get if_agc failed, error = 0x%x.\n", error);
 	}else{
@@ -157,7 +178,9 @@ uint32_t it9137_get_rf_agc_gain(uint8_t chip)
 {
 	uint32_t error=Error_NO_ERROR;
 	uint8_t rf_agc_gain;
+	pthread_mutex_lock(&mux_thr);
 	error=Demodulator_getRfAgcGain(&it9130, chip,&rf_agc_gain);
+	pthread_mutex_unlock(&mux_thr);
 	if(error){
 		printf("IT9133 get rf_agc gain failed, error = 0x%x.\n", error);
 	}else{
@@ -174,7 +197,9 @@ uint32_t it9137_get_rf_agc_gain(uint8_t chip)
 uint32_t it9137_control_pid_filter(uint8_t chip,uint8_t control)
 {
 	uint32_t error=Error_NO_ERROR;
+	pthread_mutex_lock(&mux_thr);
 	error=Demodulator_controlPidFilter(&it9130, chip,  control);
+	pthread_mutex_unlock(&mux_thr);
 	if(error){
 		printf("IT9133 control_pidfilter failed, error = 0x%x.\n", error);
 	}
@@ -185,8 +210,9 @@ uint32_t it9137_control_pid_filter(uint8_t chip,uint8_t control)
 uint32_t it9137_reset_filter(uint8_t chip)
 {
 	uint32_t error=Error_NO_ERROR;
-
+	pthread_mutex_lock(&mux_thr);
 	error=Demodulator_resetPidFilter(&it9130, chip);
+	pthread_mutex_unlock(&mux_thr);
 	if(error){
 		printf("IT9133 reset_filter failed, error = 0x%x.\n", error);
 
@@ -197,7 +223,9 @@ uint32_t it9137_reset_filter(uint8_t chip)
 uint32_t it9137_add_pid_filter(uint8_t chip,uint8_t index,Pid pid)
 {
 	uint32_t error=Error_NO_ERROR;
+	pthread_mutex_lock(&mux_thr);
 	error=Demodulator_addPidToFilter(&it9130, chip,  index, pid);
+	pthread_mutex_unlock(&mux_thr);
 	if(error){
 		printf("IT9133 add_pidfilter failed, error = 0x%x.\n", error);
 	}
@@ -209,8 +237,9 @@ uint32_t it9137_add_pid_filter(uint8_t chip,uint8_t index,Pid pid)
 uint32_t it9137_control_power_saving(uint8_t chip,uint8_t control)
 {
 	uint32_t error=Error_NO_ERROR;
-
+	pthread_mutex_lock(&mux_thr);
 	error=Demodulator_controlPowerSaving(&it9130, chip, control);
+	pthread_mutex_unlock(&mux_thr);
 	if(error){
 		printf("IT9133 controlPowerSaving failed, error = 0x%x.\n", error);
 
@@ -224,7 +253,9 @@ uint32_t it9137_check_tpslocked(uint8_t chip)
 
 	uint32_t error=Error_NO_ERROR;
 	Booll istpslocked;
+	pthread_mutex_lock(&mux_thr);
 	error=Demodulator_isTpsLocked(&it9130, chip, &istpslocked);
+	pthread_mutex_unlock(&mux_thr);
 	if(!error){
 		if(istpslocked) printf("TPS is locked.\n");
 		else printf("TPS is not locked.\n");
@@ -237,7 +268,9 @@ uint32_t it9137_check_mpeg2locked(uint8_t chip)
 
 	uint32_t error=Error_NO_ERROR;
 	Booll islocked;
+	pthread_mutex_lock(&mux_thr);
 	error=Demodulator_isMpeg2Locked(&it9130, chip, &islocked);
+	pthread_mutex_unlock(&mux_thr);
 	if(!error){
 		if(islocked) printf("MPEG is locked.\n");
 		else printf("MPEG is not locked.\n");
@@ -251,7 +284,9 @@ uint32_t it9137_set_streamtype( StreamType  streamType)
 
 	uint32_t error=Error_NO_ERROR;
 	Booll islocked;
+	pthread_mutex_lock(&mux_thr);
 	error=Demodulator_setStreamType(&it9130, streamType);
+	pthread_mutex_unlock(&mux_thr);
 	if(!error){
 		printf("set stream type ok.\n");
 	}
@@ -263,7 +298,9 @@ uint32_t it9137_set_architecture( Architecture      architecture)
 
 	uint32_t error=Error_NO_ERROR;
 	Booll islocked;
+	pthread_mutex_lock(&mux_thr);
 	error=Demodulator_setArchitecture(&it9130, architecture);
+	pthread_mutex_unlock(&mux_thr);
 	if(!error){
 		printf("set architecture ok.\n");
 	}
@@ -274,8 +311,9 @@ uint32_t it9137_get_channel_modulation(uint8_t chip)
 {
 	uint32_t error=Error_NO_ERROR;
 	ChannelModulation *info;
-
+	pthread_mutex_lock(&mux_thr);
 	error=Demodulator_getChannelModulation(&it9130, chip, info);
+	pthread_mutex_unlock(&mux_thr);
 	if(!error){
 
 		printf("Frequency is %dkHz\n", info->frequency);
@@ -374,7 +412,9 @@ uint32_t it9137_get_signal_quality(uint8_t chip)
 {
 	uint32_t error=Error_NO_ERROR;
 	uint8_t quality;
+	pthread_mutex_lock(&mux_thr);
 	error=Demodulator_getSignalQuality(&it9130, chip, &quality);
+	pthread_mutex_unlock(&mux_thr);
 	if(!error){
 
 		printf("the signal quality is %d.\n",quality);
@@ -386,7 +426,9 @@ uint32_t it9137_get_signal_quality_indication(uint8_t chip)
 {
 	uint32_t error=Error_NO_ERROR;
 	uint8_t quality;
+	pthread_mutex_lock(&mux_thr);
 	error=Demodulator_getSignalQualityIndication(&it9130, chip, &quality);
+	pthread_mutex_unlock(&mux_thr);
 	if(!error){
 
 		printf("the signal quality indication is %d.\n",quality);
@@ -399,7 +441,9 @@ uint32_t it9137_get_signal_strength(uint8_t chip)
 {
 	uint32_t error=Error_NO_ERROR;
 	uint8_t strength;
+	pthread_mutex_lock(&mux_thr);
 	error=Demodulator_getSignalStrength(&it9130, chip, &strength);
+	pthread_mutex_unlock(&mux_thr);
 	if(!error){
 
 		printf("the signal strength is %d.\n",strength);
@@ -412,7 +456,9 @@ uint32_t it9137_get_signal_strength_indication(uint8_t chip)
 {
 	uint32_t error=Error_NO_ERROR;
 	uint8_t strength;
+	pthread_mutex_lock(&mux_thr);
 	error=Demodulator_getSignalStrengthIndication(&it9130, chip, &strength);
+	pthread_mutex_unlock(&mux_thr);
 	if(!error){
 
 		printf("the signal strength is %d.\n",strength);
@@ -426,7 +472,9 @@ uint32_t it9137_get_signal_strength_dbm(uint8_t chip)
 {
 	uint32_t error=Error_NO_ERROR;
 	long strengthdbm;
+	pthread_mutex_lock(&mux_thr);
 	error=Demodulator_getSignalStrengthDbm(&it9130, chip, &strengthdbm);
+	pthread_mutex_unlock(&mux_thr);
 	if(!error){
 
 		printf("the signal strength is %ld\n",strengthdbm);
@@ -439,7 +487,9 @@ uint32_t it9137_get_snr(uint8_t chip)
 
 	uint32_t error=Error_NO_ERROR;
 	uint8_t snr=0;
+	pthread_mutex_lock(&mux_thr);
 	error=Demodulator_getSNR(&it9130, chip, &snr);
+	pthread_mutex_unlock(&mux_thr);
 	if(!error){
 
 		printf("signal snr is %d DBm.\n",snr);
@@ -456,8 +506,9 @@ uint32_t it9137_get_postviterbi_bit_error_rate(uint8_t chip)
 	uint16_t about_count;
 	double postvitber;
 	uint32_t error=Error_NO_ERROR;
-
+	pthread_mutex_lock(&mux_thr);
 	error=Demodulator_getPostVitBer(&it9130, chip, & post_error_count, &post_bit_count, &about_count);
+	pthread_mutex_unlock(&mux_thr);
 	if(!error){
 
 		postvitber=(double)post_error_count/(double)post_bit_count;
@@ -480,8 +531,9 @@ uint32_t it9137_get_statistic(uint8_t chip)
 
 	uint32_t error = Error_NO_ERROR;
 	Statistic statistic;  
-
+	pthread_mutex_lock(&mux_thr);
 	error = Demodulator_getStatistic ( &it9130, 0, &statistic);
+	pthread_mutex_unlock(&mux_thr);
 	if (error)
 		printf ("IT9133 get static failed.error = %x.\n", error);
 	else

@@ -1528,7 +1528,7 @@ bool lgdst_upgrade_rx(int argc, char **argv)  // return -1 when failed, liyenho
 	//if(error)goto _exit;
 //     error= it9137_scan_channel(0,747000,832000, 6000);
   //  if(error)goto _exit;
-	error=it9137_acquire_channel(0,/*809000*/750000,6000); //avoid conflict with wifi, liyenho
+	error=it9137_acquire_channel(0,809000/*750000*/,6000); //avoid conflict with wifi, liyenho
 	if(error)goto _exit;
 	//error=it9137_get_if_agc(0);
 //	if(error)goto _exit;
@@ -1602,6 +1602,10 @@ _exit:
 #ifdef LIB
   int lgdst_init_rx(int argc, char **argv) {
   	return lgdst_init_rx0(argc, argv);
+  }
+ uint32_t lgdst_reacquire_vch();
+  uint32_t lgdst_reacquire_vch() {
+	return it9137_acquire_channel(0,809000,6000);
   }
 #endif
 

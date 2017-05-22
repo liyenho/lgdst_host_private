@@ -80,6 +80,8 @@ typedef enum{
 }access_mode;
 
 #define USB_SYSTEM_RESTART_VAL					0xa5
+#define USB_INIT_VID_SUBSYS								0xa1		// ite video subsystem init
+#define USB_START_VID_SUBSYS							0xa2		// ite video subsystem start
 #define FW_UPGRADE_HDR_LEN						(12)
 #define ATMEL_UPGRADE_HDR_LEN					(12-4)  // starting address would be calc by atmel bootloader
 #define USB_CPLD_UPGRADE_VAL					0x21  	// cpld upgrade cmd

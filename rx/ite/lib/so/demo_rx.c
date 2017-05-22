@@ -83,6 +83,13 @@
 			  		pl = NULL;
 		  		} while (20>=argc && argv[argc-1]) ;
 		  		if (3>=argc) {
+//////////////////////////////////////////////////////////////////////////////////////////////////
+			  		if (2 == argc && !strncmp(*argv,"R",1)) {
+			  		  extern uint32_t lgdst_reacquire_vch();
+				  		lgdst_reacquire_vch();
+				  		continue;
+			  		}
+//////////////////////////////////////////////////////////////////////////////////////////////////
 			  		puts("empty command line received...");
 			  		if (1==do_exit_m) break;
 			  		continue;
