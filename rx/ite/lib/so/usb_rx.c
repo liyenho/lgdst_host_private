@@ -821,7 +821,6 @@ int cpld_firmware_update(int mode, const char*file_name)
 {
 	int r = 2, blksz=0 ;
 	int try_i = 0;
-	float delay ;
 
 	do_exit = 1;
 	pthread_mutex_init(&mux, NULL);
@@ -898,7 +897,6 @@ int cpld_firmware_update(int mode, const char*file_name)
 
 	// send system restart command...
 	libusb_control_transfer(devh,CTRL_OUT, USB_RQ,USB_SYSTEM_RESTART_VAL,USB_HOST_MSG_IDX,NULL, 0, 0);
-
  		do {
 			 libusb_control_transfer(devh,
 					CTRL_IN, USB_RQ,
