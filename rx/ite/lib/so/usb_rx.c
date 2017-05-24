@@ -12,8 +12,7 @@
 #include <sys/fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/ipc.h>
-#include <sys/shm.h>
-#include <netinet/in.h>
+#include <sys/shm.h>#include <netinet/in.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <net/if.h>
@@ -1526,7 +1525,7 @@ bool lgdst_upgrade_rx(int argc, char **argv)  // return -1 when failed, liyenho
 	//if(error)goto _exit;
 //     error= it9137_scan_channel(0,747000,832000, 6000);
   //  if(error)goto _exit;
-	error=it9137_acquire_channel(0,809000/*750000*/,6000); //avoid conflict with wifi, liyenho
+	error=it9137_acquire_channel(0,/*809000*/706000/*750000*/,6000); //avoid conflict with wifi, liyenho
 	if(error)goto _exit;
 	//error=it9137_get_if_agc(0);
 //	if(error)goto _exit;

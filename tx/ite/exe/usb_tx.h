@@ -68,7 +68,7 @@ typedef int bool;
 #define HOST_BUFFER_SIZE							(256-1) // max data len-1
 #define UDPIN_PORT 									5553
 #define UDPIN_MULTIADDR 							"127.0.0.1"
-#define LO_Frequency 								1583000
+#define LO_Frequency 								/*1583000*/ 1686000
 
 enum TYPE {
 	CMD0,	/*w/o params*/

@@ -116,7 +116,7 @@ typedef enum{
 #define EXTRA									16  	// randomly send more data on bulk pipe
 #define USB_ITE_FW_VAL							0x6
 #define ITE_FW_HDR_LEN							(4)
-#define LO_Frequency 							1583000
+#define LO_Frequency 							/*1583000*/ 1686000
 
 
 intmax_t get_file_size(const char* file_path);
