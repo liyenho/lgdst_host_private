@@ -1570,8 +1570,8 @@ printf("line # = %d\n", __LINE__);
 	channel_Modulation.transmissionMode=TransmissionMode_2K;
 	error=it9517_set_channel_modulation( channel_Modulation,2);
 	if(error)goto exit;
-	//error=it9517_acquire_channel(/*809000*//*706000*/750000,6000); //avoid conflict with wifi, liyenho
-	error=it9517_acquire_channel(/*809000*/706000,6000);
+	//error=it9517_acquire_channel(/*809000*//*720000*/750000,6000); //avoid conflict with wifi, liyenho
+	error=it9517_acquire_channel(/*809000*/720000,6000);
 	if(error)goto exit;
 	//error=it9517_get_output_gain();
 	//if(error)goto exit;
