@@ -893,7 +893,8 @@ int cpld_firmware_update(int mode, const char*file_name)
 		perror_exit("could not find/open USB device",2);
 	}
 	printf("claimed interface\n");
-
+	if (system_upgrade) // no need to bring up other proc threads,
+		goto upgrade_next;
 	// send system restart command...
 	libusb_control_transfer(devh,CTRL_OUT, USB_RQ,USB_SYSTEM_RESTART_VAL,USB_HOST_MSG_IDX,NULL, 0, 0);
  		do {
@@ -912,6 +913,7 @@ int cpld_firmware_update(int mode, const char*file_name)
 	r = pthread_create(&poll_thread, NULL, poll_thread_main, NULL);
 	if (0 != r)
 		perror_exit("poll thread creation error", r);
+upgrade_next:
 #ifndef LIB
 	if (SIG_ERR == signal(SIGINT, sigint_handler)) {
 		perror("FAIL: assigning signal handler");
