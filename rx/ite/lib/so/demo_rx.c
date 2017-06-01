@@ -99,7 +99,7 @@
 			  		if (1==do_exit_m) break;
 			  		continue;
 		  		}
-		  		lgdst_access_rx(argc, argv, NULL);
+		  		lgdst_access_rx(argc-1, argv, NULL);
 		  }
 	  }
 	  return ;
