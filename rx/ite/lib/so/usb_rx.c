@@ -1604,7 +1604,7 @@ _exit:
   }
  uint32_t lgdst_reacquire_vch();
   uint32_t lgdst_reacquire_vch() {
-	return it9137_acquire_channel(0,809000,6000);
+	return it9137_acquire_channel(0,/*809000*/720000,6000);
   }
 #endif
 
