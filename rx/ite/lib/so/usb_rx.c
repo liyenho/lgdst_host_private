@@ -410,10 +410,15 @@ void lgdst_ctl_snd_rx(unsigned char *tpacket)
 			case ACS:
 				if (shmLgdst_proc->echo) {
 					printf("ACS/echo: access= %d, dcnt= %d\n",(int)acs->access,(int)acs->dcnt);  // for debug
-					pthread_mutex_lock(&mux);
-					while(0==libusb_control_transfer(devh,CTRL_IN, USB_RQ,USB_HOST_MSG_RX_VAL,USB_HOST_MSG_IDX,(unsigned char*)acs, sizeof(*acs)-sizeof(acs->data[0]), 0))
+					while(1) {
+						pthread_mutex_lock(&mux);
+						if (libusb_control_transfer(devh,CTRL_IN, USB_RQ,USB_HOST_MSG_RX_VAL,USB_HOST_MSG_IDX,(unsigned char*)acs, sizeof(*acs)-sizeof(acs->data[0]), 0)){
+							pthread_mutex_unlock(&mux);
+							break;
+						}
+						pthread_mutex_unlock(&mux);
 						short_sleep(0.0005);
-					pthread_mutex_unlock(&mux);
+					}
 					memcpy(&shmLgdst_proc->access.hdr,&lclMem.hdr, sizeof(lclMem.hdr)-sizeof(lclMem.hdr.data[0]));
 					shmLgdst_proc->echo = false;
 				}
@@ -461,8 +466,9 @@ void lgdst_ctl_snd_rx(unsigned char *tpacket)
 		acs->access = RF2072_WRITE;
 		acs->addr = pregs[i].addr;
 		*conv = pregs[i].data;
+		pthread_mutex_lock(&mux);
 		libusb_control_transfer(devh,CTRL_OUT, USB_RQ,USB_HOST_MSG_TX_VAL,USB_HOST_MSG_IDX,(unsigned char*)acs, sizeof(*acs)+(acs->dcnt-1), 0);
-
+		pthread_mutex_unlock(&mux);
 		short_sleep(0.2); 	// validate echo after 0.1 sec
 		printf("xxxxxx 0x%04x @ 0x%x written xxxxxx\n",*(uint16_t*)acs->data,acs->addr);
 	}
@@ -747,18 +753,23 @@ int cpld_firmware_update(int mode, const char*file_name)
 		if (1/*cpld*/== mode) {
 			fw_info[2] = 0x00003800;  // constant cpld download address
 			printf("upgrade firmware address: 0x%08x\n", fw_info[2]);
+			pthread_mutex_lock(&mux);
 			libusb_control_transfer(devh, CTRL_OUT, USB_RQ,	USB_CPLD_UPGRADE_VAL, USB_HOST_MSG_IDX,	(unsigned char*)fw_info, FW_UPGRADE_HDR_LEN, 0);
+			pthread_mutex_unlock(&mux);
 			blksz = 7200; // similar size to atmel bin image, it should be fine
 			delay = 0.84;
 		}
 		else if (3/*atmel*/== mode) {
+			pthread_mutex_lock(&mux);
 			libusb_control_transfer(devh, CTRL_OUT, USB_RQ,	USB_FWM_UPDATE_VAL, USB_HOST_MSG_IDX,(unsigned char*)fw_info, ATMEL_UPGRADE_HDR_LEN, 0);
+			pthread_mutex_unlock(&mux);
 			blksz = 7200;
 			delay = 0.84;
 		}
 		else if(4/*atmel boot*/==mode){
-
+			pthread_mutex_lock(&mux);
 			libusb_control_transfer(devh, CTRL_OUT, USB_RQ,USB_FWM_BOOTUP_VAL, USB_HOST_MSG_IDX,NULL, 0, 0);
+			pthread_mutex_unlock(&mux);
 			short_sleep(0.01);
 
 		}
@@ -774,7 +785,9 @@ int cpld_firmware_update(int mode, const char*file_name)
 		}
 		cur = blksz;
 		do {
+			pthread_mutex_lock(&mux);
 			libusb_control_transfer(devh,CTRL_IN, USB_RQ,USB_STREAM_ON_VAL,USB_QUERY_IDX,(unsigned char*)&main_loop_on, sizeof(main_loop_on), 0);
+			pthread_mutex_unlock(&mux);
 			//printf("main_loop_on=%d\n",main_loop_on);
 			if (!main_loop_on) {
 				short_sleep(1); 	// setup & settle in 1 sec
@@ -896,13 +909,17 @@ int cpld_firmware_update(int mode, const char*file_name)
 	if (system_upgrade) // no need to bring up other proc threads,
 		goto upgrade_next;
 	// send system restart command...
+	pthread_mutex_lock(&mux);
 	libusb_control_transfer(devh,CTRL_OUT, USB_RQ,USB_SYSTEM_RESTART_VAL,USB_HOST_MSG_IDX,NULL, 0, 0);
+	pthread_mutex_unlock(&mux);
  		do {
+	 		pthread_mutex_lock(&mux);
 			 libusb_control_transfer(devh,
 					CTRL_IN, USB_RQ,
 					USB_STREAM_ON_VAL,
 					USB_QUERY_IDX,
 					&main_loop_on, sizeof(main_loop_on), 0);
+			pthread_mutex_unlock(&mux);
 			if (!main_loop_on) {
 				short_sleep(1); 	// setup & settle in 1 sec
 			} else
@@ -992,8 +1009,9 @@ int set_frequency_rf2072(uint32_t f_lo_KHz)
         acs->access = RF2072_WRITE;
 		acs->addr = 0x08;
 		*conv =(0xFC06 & 0x7FFE) | 0x8000;	//ct_min=0 ct_max=127
+		pthread_mutex_lock(&mux);
 		libusb_control_transfer(devh,CTRL_OUT, USB_RQ,USB_HOST_MSG_TX_VAL,USB_HOST_MSG_IDX,(unsigned char*)acs, sizeof(*acs)+(acs->dcnt-1), 0);
-
+		pthread_mutex_unlock(&mux);
 		short_sleep(0.2); 	// validate echo after 0.1 sec
 		printf("xxxxxx 0x%04x @ 0x%x written xxxxxx\n",*(uint16_t*)acs->data,acs->addr);
 
@@ -1002,8 +1020,9 @@ int set_frequency_rf2072(uint32_t f_lo_KHz)
         acs->access = RF2072_WRITE;
 		acs->addr = 0x0F;
 		*conv =P2_FREQ1;
+		pthread_mutex_lock(&mux);
 		libusb_control_transfer(devh,CTRL_OUT, USB_RQ,USB_HOST_MSG_TX_VAL,USB_HOST_MSG_IDX,(unsigned char*)acs, sizeof(*acs)+(acs->dcnt-1), 0);
-
+		pthread_mutex_unlock(&mux);
 		short_sleep(0.2); 	// validate echo after 0.1 sec
 		printf("xxxxxx 0x%04x @ 0x%x written xxxxxx\n",*(uint16_t*)acs->data,acs->addr);
 
@@ -1012,8 +1031,9 @@ int set_frequency_rf2072(uint32_t f_lo_KHz)
         acs->access = RF2072_WRITE;
 		acs->addr = 0x10;
 		*conv =P2_FREQ2;
+		pthread_mutex_lock(&mux);
 		libusb_control_transfer(devh,CTRL_OUT, USB_RQ,USB_HOST_MSG_TX_VAL,USB_HOST_MSG_IDX,(unsigned char*)acs, sizeof(*acs)+(acs->dcnt-1), 0);
-
+		pthread_mutex_unlock(&mux);
 		short_sleep(0.2); 	// validate echo after 0.1 sec
 		printf("xxxxxx 0x%04x @ 0x%x written xxxxxx\n",*(uint16_t*)acs->data,acs->addr);
 
@@ -1022,8 +1042,9 @@ int set_frequency_rf2072(uint32_t f_lo_KHz)
         acs->access = RF2072_WRITE;
 		acs->addr = 0x11;
 		*conv =P2_FREQ3;
+		pthread_mutex_lock(&mux);
 		libusb_control_transfer(devh,CTRL_OUT, USB_RQ,USB_HOST_MSG_TX_VAL,USB_HOST_MSG_IDX,(unsigned char*)acs, sizeof(*acs)+(acs->dcnt-1), 0);
-
+		pthread_mutex_unlock(&mux);
 		short_sleep(0.2); 	// validate echo after 0.1 sec
 		printf("xxxxxx 0x%04x @ 0x%x written xxxxxx\n",*(uint16_t*)acs->data,acs->addr);
 
@@ -1043,7 +1064,9 @@ int init_rf2072(void)
 	acs->access = RF2072_RESET;
 	acs->dcnt = 0; // no param
 	acs->addr = 0x0; // by wire not addr
+	pthread_mutex_lock(&mux);
 	libusb_control_transfer(devh,CTRL_OUT,USB_RQ,USB_HOST_MSG_TX_VAL,USB_HOST_MSG_IDX,(unsigned char*)acs, sizeof(*acs), 0);
+	pthread_mutex_unlock(&mux);
 	short_sleep(0.2);
 
 	rffe_write_regs(pregs=GET_ARRAY(chsel_2072), sz=ARRAY_SIZE(chsel_2072));
@@ -1056,7 +1079,9 @@ int init_rf2072(void)
         acs->access = RF2072_WRITE;
 		acs->addr = 0x15;
 		*conv =(0x8000 | 0x0008);
+		pthread_mutex_lock(&mux);
 		libusb_control_transfer(devh,CTRL_OUT, USB_RQ,USB_HOST_MSG_TX_VAL,USB_HOST_MSG_IDX,(unsigned char*)acs, sizeof(*acs)+(acs->dcnt-1), 0);
+		pthread_mutex_unlock(&mux);
 		short_sleep(0.2);
 		printf("xxxxxx 0x%04x @ 0x%x written xxxxxx\n",*(uint16_t*)acs->data,acs->addr);
 #endif
@@ -1067,7 +1092,9 @@ int init_rf2072(void)
         acs->access = RF2072_WRITE;
 		acs->addr = 0x09;
 		*conv =((0x8224&0xFFF7) | 0x0008);
+		pthread_mutex_lock(&mux);
 		libusb_control_transfer(devh,CTRL_OUT, USB_RQ,USB_HOST_MSG_TX_VAL,USB_HOST_MSG_IDX,(unsigned char*)acs, sizeof(*acs)+(acs->dcnt-1), 0);
+		pthread_mutex_unlock(&mux);
 		printf("xxxxxx 0x%04x @ 0x%x written xxxxxx\n",*(uint16_t*)acs->data,acs->addr);
 
 		short_sleep(0.5);
@@ -1076,18 +1103,23 @@ int init_rf2072(void)
 	acs->dcnt = sizeof(uint16_t);
 	acs->access = RF2072_READ;
     	  acs->addr = 0x00;
+   pthread_mutex_lock(&mux);
 	libusb_control_transfer(devh,
 						CTRL_OUT, USB_RQ,
 						USB_HOST_MSG_TX_VAL,
 						USB_HOST_MSG_IDX,
 						acs, sizeof(*acs)+(acs->dcnt-1), 0);
+	pthread_mutex_unlock(&mux);
 	short_sleep(0.2);
-	  	 while(0==libusb_control_transfer(devh,
-					  	CTRL_IN, USB_RQ,
-					  	USB_HOST_MSG_RX_VAL,
-					  	USB_HOST_MSG_IDX,
-					  	acs, sizeof(*acs)+(acs->dcnt-1), 0))
-				short_sleep(0.0005);
+		while(1) {
+			pthread_mutex_lock(&mux);
+			if (libusb_control_transfer(devh,CTRL_IN, USB_RQ,USB_HOST_MSG_RX_VAL,USB_HOST_MSG_IDX,(unsigned char*)acs, sizeof(*acs)+(acs->dcnt-1), 0)){
+				pthread_mutex_unlock(&mux);
+				break;
+			}
+			pthread_mutex_unlock(&mux);
+			short_sleep(0.0005);
+		}
 	short_sleep(0.2);
 	printf("reg 0x%x = 0x%04x\n",acs->addr,*(uint16_t*)acs->data);
 #endif
@@ -1104,27 +1136,34 @@ int init_rf2072(void)
     	  acs->dcnt = sizeof(uint16_t);
     	  acs->addr = 0x1D;
     	  *conv = 0x1001;
+    	pthread_mutex_lock(&mux);
 		libusb_control_transfer(devh,
 						CTRL_OUT, USB_RQ,
 						USB_HOST_MSG_TX_VAL,
 						USB_HOST_MSG_IDX,
 						acs, sizeof(*acs)+(acs->dcnt-1), 0);
+		pthread_mutex_unlock(&mux);
 	short_sleep(0.2);
 		printf("setup device control = 0x%04x\n",*(uint16_t*)acs->data);
     	  acs->access = RF2072_READ;
     	  acs->addr = 0x1F;
+    	  pthread_mutex_lock(&mux);
 		  libusb_control_transfer(devh,
 						CTRL_OUT, USB_RQ,
 						USB_HOST_MSG_TX_VAL,
 						USB_HOST_MSG_IDX,
 						acs, sizeof(*acs)+(acs->dcnt-1), 0);
+		pthread_mutex_unlock(&mux);
 	short_sleep(0.2);
-	  	 while(0==libusb_control_transfer(devh,
-					  	CTRL_IN, USB_RQ,
-					  	USB_HOST_MSG_RX_VAL,
-					  	USB_HOST_MSG_IDX,
-					  	acs, sizeof(*acs)+(acs->dcnt-1), 0))
-				short_sleep(0.0005);
+		while(1) {
+			pthread_mutex_lock(&mux);
+			if (libusb_control_transfer(devh,CTRL_IN, USB_RQ,USB_HOST_MSG_RX_VAL,USB_HOST_MSG_IDX,(unsigned char*)acs, sizeof(*acs)+(acs->dcnt-1), 0)){
+				pthread_mutex_unlock(&mux);
+				break;
+			}
+			pthread_mutex_unlock(&mux);
+			short_sleep(0.0005);
+		}
 	short_sleep(0.2);
 		printf("lock state = 0x%x\n",(0x8000&*(uint16_t*)acs->data)?1:0);
 
@@ -1306,24 +1345,30 @@ bool lgdst_upgrade_rx(int argc, char **argv)  // return -1 when failed, liyenho
   		else if (2/*fpga*/== system_upgrade) {
 	  		fw_info[2] = 0x00295700;  // constant fpga download address
 	  		printf("upgrade firmware address: 0x%08x\n", fw_info[2]);
+	  		pthread_mutex_lock(&mux);
 		 libusb_control_transfer(devh, CTRL_OUT, USB_RQ,
 			USB_FPGA_UPGRADE_VAL, USB_HOST_MSG_IDX,
 			fw_info, FW_UPGRADE_HDR_LEN, 0);
+			pthread_mutex_unlock(&mux);
 			blksz = 15000;
 			delay = 3.5;
   		}
 #endif
   		else if (3/*atmel*/== system_upgrade) {
+	  		pthread_mutex_lock(&mux);
 		 libusb_control_transfer(devh, CTRL_OUT, USB_RQ,
 			USB_FWM_UPDATE_VAL, USB_HOST_MSG_IDX,
 			fw_info, ATMEL_UPGRADE_HDR_LEN, 0);
+			pthread_mutex_unlock(&mux);
 			blksz = 7200;
 			delay = 0.84;
   		}
   		else if (4/*atmel boot*/== system_upgrade) {
+	  		pthread_mutex_lock(&mux);
 		 libusb_control_transfer(devh, CTRL_OUT, USB_RQ,
 			USB_FWM_BOOTUP_VAL, USB_HOST_MSG_IDX,
 			NULL, 0, 0);
+			pthread_mutex_unlock(&mux);
 			short_sleep(0.01);
 			return true; // it is done
   		}
@@ -1353,11 +1398,13 @@ bool lgdst_upgrade_rx(int argc, char **argv)  // return -1 when failed, liyenho
  #endif
 		cur = blksz;
  		do {
+	 		pthread_mutex_lock(&mux);
 			 libusb_control_transfer(devh,
 					CTRL_IN, USB_RQ,
 					USB_STREAM_ON_VAL,
 					USB_QUERY_IDX,
 					&main_loop_on, sizeof(main_loop_on), 0);
+			pthread_mutex_unlock(&mux);
 			if (!main_loop_on) {
 				short_sleep(1); 	// setup & settle in 1 sec
 			} else
@@ -1366,10 +1413,14 @@ bool lgdst_upgrade_rx(int argc, char **argv)  // return -1 when failed, liyenho
  #ifdef FWUP_DNLD_DBG
  		rem = len;
  		do {
+	 		pthread_mutex_lock(&mux);
  			libusb_control_transfer(devh, CTRL_IN, USB_RQ, 0x7d, 0, &ta, sizeof(ta), 0);
+ 			pthread_mutex_unlock(&mux);
  			short_sleep(0.005);
 		} while (0==ta);
+		pthread_mutex_lock(&mux);
  		libusb_control_transfer(devh, CTRL_OUT, USB_RQ, 0xd7, 0, NULL, 0, 0);
+ 		pthread_mutex_unlock(&mux);
  #endif
 		n = 1;
 		// send 1st chunk outside of loop to align xfer at target side
@@ -1388,10 +1439,14 @@ bool lgdst_upgrade_rx(int argc, char **argv)  // return -1 when failed, liyenho
 			fread(vidbuf, cur, 1,file_up);
  #ifdef FWUP_DNLD_DBG
  		do {
+	 		pthread_mutex_lock(&mux);
  			libusb_control_transfer(devh, CTRL_IN, USB_RQ, 0x7d, 0, &ta, sizeof(ta), 0);
+ 			pthread_mutex_unlock(&mux);
  			short_sleep(0.005);
 		} while (0==ta);
+		pthread_mutex_lock(&mux);
  		libusb_control_transfer(devh, CTRL_OUT, USB_RQ, 0xd7, 0, NULL, 0, 0);
+ 		pthread_mutex_unlock(&mux);
  #endif
 				 r=libusb_bulk_transfer(
 				 devh, 2 | LIBUSB_ENDPOINT_OUT,
@@ -1417,7 +1472,9 @@ bool lgdst_upgrade_rx(int argc, char **argv)  // return -1 when failed, liyenho
   		if (blksz<=rem) {
   			cur1 = blksz;
   			rem -= blksz;
+  			pthread_mutex_lock(&mux);
 	 		libusb_control_transfer(devh, CTRL_OUT, USB_RQ, 0xd7, 0, NULL, 0, 0);
+	 		pthread_mutex_unlock(&mux);
 			do {
 			 r = libusb_bulk_transfer(
 				 devh, (1 | LIBUSB_ENDPOINT_IN),
@@ -1447,7 +1504,9 @@ bool lgdst_upgrade_rx(int argc, char **argv)  // return -1 when failed, liyenho
 	  		cur1 = rem;
 	  		rem = 0; // last run
 			short_sleep(delay); // sync up with target/flash access on max timing
+			pthread_mutex_lock(&mux);
 	 		libusb_control_transfer(devh, CTRL_OUT, USB_RQ, 0xd7, 0, NULL, 0, 0);
+	 		pthread_mutex_unlock(&mux);
 			do {
 			 r = libusb_bulk_transfer(
 				 devh, (1 | LIBUSB_ENDPOINT_IN),
@@ -1488,6 +1547,7 @@ bool lgdst_upgrade_rx(int argc, char **argv)  // return -1 when failed, liyenho
 #endif
 #if /*true*/false  // test atmel encapsulation of asic host
 	// initialize video subsystem inside atmel
+		pthread_mutex_lock(&mux);
 		 libusb_control_transfer(devh,
 		 													CTRL_OUT,
 		 													USB_RQ,
@@ -1496,7 +1556,9 @@ bool lgdst_upgrade_rx(int argc, char **argv)  // return -1 when failed, liyenho
 															NULL,
 															0,
 															0);
+		pthread_mutex_unlock(&mux);
 	// startup video subsystem inside atmel
+		pthread_mutex_lock(&mux);
 		 libusb_control_transfer(devh,
 		 													CTRL_OUT,
 		 													USB_RQ,
@@ -1505,6 +1567,7 @@ bool lgdst_upgrade_rx(int argc, char **argv)  // return -1 when failed, liyenho
 															NULL,
 															0,
 															0);
+		pthread_mutex_unlock(&mux);
 #else
 	init_rf2072();
 
