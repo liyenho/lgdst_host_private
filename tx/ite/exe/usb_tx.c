@@ -1591,7 +1591,7 @@ printf("line # = %d\n", __LINE__);
 	gettimeofday(&end1,NULL);
 	error=it9517_enable_transmission_mode(1);
 	if(error)goto exit;
-	 gettimeofday(&end1,NULL);
+	 //gettimeofday(&end1,NULL);
 #endif
 	int32_t  msg[80]; // access buffer
 	//uint16_t *conv= (uint16_t*)acs->data;
