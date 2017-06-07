@@ -69,6 +69,7 @@ typedef struct {
 } ctrl_radio_stats;
 
 #define RADIO_COMM_VAL								0x10
+#define RADIO_SENS_VAL									0x11  // added for sensitivity measurement on control link, liyenho
 #define RADIO_CAL_IDX										0x1
 #define RADIO_CAL_DONE_IDX 		 			0xc	// user query cmd index on cap value tuning process
 #define RADIO_STATS_IDX								0x5

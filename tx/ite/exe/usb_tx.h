@@ -131,6 +131,8 @@ typedef enum  {
 #ifdef  RADIO_SI4463
  //#define CTRL_RADIO_TEST
   #define RADIO_COMM_VAL						0x10  // using 5 bit out of 16 bit should be alright?
+  #define RADIO_SENS_VAL									0x11  // added for sensitivity measurement on control link, liyenho
+  #define RADIO_GET_RSSI_IDX							0x32  // for sensitivity measure on control link, liyenho
   #define RADIO_STARTUP_IDX						0x2
   #define RADIO_DATA_TX_IDX 					0x3
   #define RADIO_DATA_RX_IDX						0x4

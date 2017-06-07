@@ -50,6 +50,9 @@ socklen_t ctrlsnd_len;
 struct sockaddr_in ctrlsnd, ctrlrcv; //clnt;
 unsigned char radio_tpacket[RADIO_USR_TX_LEN]__attribute__((aligned(8)));
 unsigned char radio_rpacket[RADIO_USR_RX_LEN+RADIO_INFO_LEN]__attribute__((aligned(8)));
+volatile bool get_sensitivity= false ;
+const char sensitivity_curve[] = "sensitivity_curve.csv";
+static FILE *sensitivity_cur= 0 ;
 #endif
 
 int udpin_len, udpout_len;
@@ -240,7 +243,9 @@ void *ctrl_poll_recv(void *arg)
 {
 	int r, r1, i;
 	unsigned char validdataflag=0;
-	long pv_wrbyte=0;
+	long pv_wrbyte=0,
+				/*for sensitivity meas*/
+				pkt_cnt=0;
 #ifdef UART_COMM
 			uint8_t *pb, radio_rpacket1[RADIO_USR_RX_LEN+MAVLINK_HDR_LEN+CHKSUM_LEN];
 			// constant payload length from atmel ctrl link
@@ -346,8 +351,7 @@ void *ctrl_poll_recv(void *arg)
 				printf("\n");
 			}
 
-
-			{// user packet dataloss ---------------------------------
+			// user packet dataloss ---------------------------------
 				static unsigned char val_exp;
 				unsigned char        val_cur;
 				static int ilcnt=0, becnt=0;
@@ -368,7 +372,23 @@ void *ctrl_poll_recv(void *arg)
 					}
 					val_exp = val_cur;
 				}//end valid data
-			}// user packet dataloss check
+			// user packet dataloss check
+
+			// process for control link sensitivity measurement, liyenho
+			pkt_cnt += validdataflag==0x01;
+			if (get_sensitivity) {
+				int sigdbm ;
+				  pthread_mutex_lock(&mux);
+				  libusb_control_transfer(devh,CTRL_IN, USB_RQ,RADIO_COMM_VAL,RADIO_GET_RSSI_IDX,&sigdbm, 4, 0);
+				  pthread_mutex_unlock(&mux);
+				long err_cnt = byteerror+ilcnt*RADIO_USR_RX_LEN;
+				double err_rate;
+				err_rate = (double)err_cnt /(pkt_cnt*RADIO_USR_RX_LEN);
+				if (sensitivity_cur)
+					fprintf(sensitivity_cur,
+									"%d, %f,\n",
+									sigdbm, err_rate);
+			}
 
 			usleep(CTRL_RECV_POLLPERIOD);
 		} //ctrl_sckt_ok
@@ -598,6 +618,22 @@ void *lgdst_thread_main(void *arg)
 				}
 				printf("CMD1: wDir = %d, wValue = %d, wIndex = %d, len= %d, data = %d\n",
 						shmLgdst_proc->tag.wDir,shmLgdst_proc->tag.wValue,shmLgdst_proc->tag.wIndex,shmLgdst_proc->len,*(int*)acs->data);  // for debug
+#ifdef RADIO_SI4463
+				if (RADIO_SENS_VAL == shmLgdst_proc->tag.wValue) {
+					memcpy(&get_sensitivity, (char*)acs->data, shmLgdst_proc->len);
+					if (get_sensitivity) {
+						unlink(sensitivity_curve);
+						sensitivity_cur =fopen(sensitivity_curve, "wt");
+					}
+					else {
+						if (sensitivity_cur) {
+							fclose (sensitivity_cur);
+							sensitivity_cur = NULL;
+						}
+					}
+					break ;
+				}
+#endif
 				pthread_mutex_lock(&mux);
 				libusb_control_transfer(devh,shmLgdst_proc->tag.wDir,USB_RQ,shmLgdst_proc->tag.wValue,shmLgdst_proc->tag.wIndex,acs->data,shmLgdst_proc->len, 0);
 				pthread_mutex_unlock(&mux);
@@ -641,6 +677,10 @@ void *lgdst_thread_main(void *arg)
 		if (shmctl(shmid_Lgdst, IPC_RMID, NULL))
 			perror("Error deleting shmid_Lgdst shared memory segment");
 	}
+#ifdef RADIO_SI4463
+	if (sensitivity_cur)
+		fclose (sensitivity_cur);
+#endif
 }
 
 

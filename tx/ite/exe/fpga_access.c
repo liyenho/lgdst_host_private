@@ -21,7 +21,7 @@
 
 #define true													1
 #define false													0
-#define print_usage                    puts("lgdst 0 tx bm/Va/[Uc]/ns/s/pair-id/pair-locked/loc-gps/MDst/temp/ctune/calib/calib-qry/hopless/setFEC/SiGetProp/RSSI/setCtrlPwr fpath [chidx] [bsz] [val0,val1,...], all numbers are in hex");
+#define print_usage                    puts("lgdst 0 tx bm/Va/[Uc]/ns/s/pair-id/pair-locked/loc-gps/MDst/temp/ctune/calib/calib-qry/hopless/setFEC/SiGetProp/RSSI/setCtrlPwr/sc fpath [chidx] [bsz] [val0,val1,...], all numbers are in hex");
 #define RAED_SETUP	\
 							shmLgdst_proc->type = ACS; \
 							shmLgdst_proc->tag.wDir = CTRL_OUT; \
@@ -201,7 +201,8 @@ static void ctrl_chsel_func(int entry) {
 			strcasecmp(argv[3], RSSI)&&
 			strcasecmp(argv[3], setFEC)&&
 			strcasecmp(argv[3], setCtrlPwr)&&
-			strcasecmp(argv[3], SiGetProp)))
+			strcasecmp(argv[3], SiGetProp)&&
+			strcasecmp(argv[3], "sc")/*sensitivity measure on ctrl link*/))
 			{
     	  	  	puts("invalid access mode...");
 					print_usage
@@ -370,7 +371,7 @@ static void ctrl_chsel_func(int entry) {
 					shmLgdst_proc->tag.wIndex = RADIO_HOPLESS_IDX;
 					memcpy(shmLgdst_proc->access.hdr.data, &sect, sizeof(sect));
 				}
-				else if (!strcasecmp(argv[3], locGPS)) { 
+				else if (!strcasecmp(argv[3], locGPS)) {
 					// get drone gps
 	    	        if (4+(BASE_GPS_LEN/sizeof(float)) > argc) {
 						puts("Invalid number of params, requires latitude and longitude...");
@@ -410,6 +411,24 @@ static void ctrl_chsel_func(int entry) {
 					shmLgdst_proc->tag.wValue = RADIO_COMM_VAL;
 					shmLgdst_proc->tag.wIndex = RADIO_GET_RSSI_IDX;
 			    }
+
+			    else if (!strcasecmp(argv[3], "sc")){  // sensitivity measurement on control link, liyenho
+					if (5 != argc) {
+						perror_exit("lgdst 0 tx sc 1/0 (1:start sensitivity meas, 0:stop sensitivity)",-8);
+					}
+					uint8_t mode = atoi(argv[4]);
+					if (1!=mode && 0!=mode) {
+						perror_exit("lgdst 0 tx sc 1/0 (1:start sensitivity meas, 0:stop sensitivity)",-8);
+					}
+					shmLgdst_proc->type = CMD1;
+					shmLgdst_proc->len = sizeof(mode);
+					shmLgdst_proc->tag.wDir = CTRL_OUT;
+					shmLgdst_proc->tag.wValue = RADIO_SENS_VAL;
+					shmLgdst_proc->tag.wIndex = 0x1;  // usb data interface
+					char *pc = (char*)shmLgdst_proc->access.hdr.data;
+						*pc = mode;
+				}
+
 			    else if (!strcasecmp(argv[3], setFEC)){
 					if (4+1 > argc) {
 						puts("invalid params, missing FEC status...");
@@ -437,7 +456,7 @@ static void ctrl_chsel_func(int entry) {
 					shmLgdst_proc->tag.wDir = CTRL_OUT;
 					shmLgdst_proc->tag.wValue = RADIO_COMM_VAL;
 					shmLgdst_proc->tag.wIndex = RADIO_GET_PROPERTY_IDX;
-					
+
 					char *pc = (char*)shmLgdst_proc->access.hdr.data;
 					for (i=0; i<shmLgdst_proc->len; i++) {
 						*pc++ = htoi(argv[4+i]);
@@ -542,7 +561,7 @@ _read:
 			   	printf("Cap bank tuning process is not done\n");
 			}
 			else if (!strcasecmp(argv[3], SiGetProp)) {
-				
+
 				shmLgdst_proc->type = CMD1;
 				shmLgdst_proc->len = RADIO_GET_PROPERTY_ATMEL_LEN;
 				shmLgdst_proc->tag.wDir = CTRL_IN;
