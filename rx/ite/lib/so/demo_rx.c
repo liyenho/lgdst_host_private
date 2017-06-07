@@ -67,6 +67,10 @@
   static int udpout_socket;
   //static fd_set udpin_fd;
   struct sockaddr_in udpout;
+  static bool get_sensitivity= false;
+  const char sensitivity_curve[] = "sensitivity_curve.csv";
+  static FILE *sensitivity_cur ;
+  static struct timeval loop= {3, 0}; // in every three secs
 #ifdef VIDEO_STATS
    static int udpout_socket_ff;
 	struct sockaddr_in udpout_ff;
@@ -84,12 +88,32 @@
 		  		} while (20>=argc && argv[argc-1]) ;
 		  		if (3>=argc) {
 //////////////////////////////////////////////////////////////////////////////////////////////////
-			  		if (2 == argc && !strncmp(*argv,"R",1)) {
-			  		  extern uint32_t lgdst_reacquire_vch();
-				  		lgdst_reacquire_vch();
-				  		continue;
-			  		}
-//////////////////////////////////////////////////////////////////////////////////////////////////
+			  		if (2 == argc) {
+				  		if (!strncmp(*argv,"R",1)) {
+				  		  extern uint32_t lgdst_reacquire_vch();
+					  		lgdst_reacquire_vch();
+					  		continue;
+				  		}
+				  		// sensitivity measure on vid link
+				  		if (!strncmp(*argv,"sv1",3)) {
+					  		unlink(sensitivity_curve);
+					  		sensitivity_cur = fopen(sensitivity_curve, "wt");
+					  		loop.tv_sec = 0;
+					  		loop.tv_usec = 750000;
+				  			get_sensitivity = true;
+				  			continue;
+			  			}
+				  		else if (!strncmp(*argv,"sv0",3)) {
+					  		if (sensitivity_cur) {
+					  			fclose(sensitivity_cur) ;
+					  			sensitivity_cur = NULL;
+				  			}
+					  		loop.tv_sec = 3;
+					  		loop.tv_usec = 0;
+				  			get_sensitivity = false;
+				  			continue;
+			  			}
+			  		}//////////////////////////////////////////////////////////////////////////////////////////////////
 			  		puts("empty command line received...");
 			  		if (1==do_exit_m) break;
 			  		continue;
@@ -138,7 +162,6 @@ static int udpout_init(char* udpaddr)
   }
 
   static void *vid_frmc_rx(void *arg) {
-	  const struct timeval loop= {3, 0}; // in every three secs
 	  struct timeval tstart,tend,tdelta;
 //	printf("line # = %d\n", __LINE__);
 	    /* allocate the output media context */
@@ -247,7 +270,17 @@ static int udpout_init(char* udpaddr)
 			get_time(&tend);
 			time_diff(&tend, &tstart, &tdelta);
 			if (compare_time(&tdelta,&loop)>0) {
-				lgdst_vid_stats_rx();
+				long sigdbm;
+				double ptvitber;
+				if (!get_sensitivity)
+					lgdst_vid_stats_rx(NULL, NULL);
+				else {
+					lgdst_vid_stats_rx(&sigdbm, &ptvitber);
+					if (sensitivity_cur)
+						fprintf(sensitivity_cur,
+										"%d, %f,\n",
+										sigdbm, ptvitber);
+				}
 				tstart = tend;
 			}
 		}
@@ -259,6 +292,8 @@ failed:
 //	printf("line # = %d\n", __LINE__);
 		av_free_packet(pkt);
 //	printf("line # = %d\n", __LINE__);
+		if (sensitivity_cur)
+			fclose(sensitivity_cur) ;
 		return;
   }
 #endif

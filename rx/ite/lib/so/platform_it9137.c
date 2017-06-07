@@ -42,7 +42,7 @@ uint32_t it9137_deinit(void)
 }
 
 
-//no use 
+//no use
 uint32_t it9137_reset(void)
 {
 	uint32_t error=Error_NO_ERROR;
@@ -57,7 +57,7 @@ uint32_t it9137_reset(void)
 }
 
 
-//no use 
+//no use
 uint32_t it9137_reboot(void)
 {
 	uint32_t error=Error_NO_ERROR;
@@ -141,7 +141,7 @@ uint32_t it9137_scan_channel(uint8_t chip,uint32_t start_frequency,uint32_t end_
 
 			printf("frequency=%d,bandwidth=%d\n",frequency,bandwidth);
 		}
-		usleep(400000);	
+		usleep(400000);
 		pthread_mutex_lock(&mux_thr);
 		error=Demodulator_getSignalStrengthDbm(&it9130, chip, &strengthdbm);
 		pthread_mutex_unlock(&mux_thr);
@@ -436,7 +436,7 @@ uint32_t it9137_get_signal_quality_indication(uint8_t chip)
 	return error;
 }
 
-//no use 
+//no use
 uint32_t it9137_get_signal_strength(uint8_t chip)
 {
 	uint32_t error=Error_NO_ERROR;
@@ -451,7 +451,7 @@ uint32_t it9137_get_signal_strength(uint8_t chip)
 	return error;
 }
 
-//no use 
+//no use
 uint32_t it9137_get_signal_strength_indication(uint8_t chip)
 {
 	uint32_t error=Error_NO_ERROR;
@@ -468,7 +468,7 @@ uint32_t it9137_get_signal_strength_indication(uint8_t chip)
 
 
 
-uint32_t it9137_get_signal_strength_dbm(uint8_t chip)
+uint32_t it9137_get_signal_strength_dbm(uint8_t chip, long *sigdbm)
 {
 	uint32_t error=Error_NO_ERROR;
 	long strengthdbm;
@@ -476,8 +476,9 @@ uint32_t it9137_get_signal_strength_dbm(uint8_t chip)
 	error=Demodulator_getSignalStrengthDbm(&it9130, chip, &strengthdbm);
 	pthread_mutex_unlock(&mux_thr);
 	if(!error){
-
-		printf("the signal strength is %ld\n",strengthdbm);
+		if (!sigdbm)
+			printf("the signal strength is %ld\n",strengthdbm);
+		else  *sigdbm = strengthdbm;
 	}
 	return error;
 }
@@ -499,7 +500,7 @@ uint32_t it9137_get_snr(uint8_t chip)
 }
 
 
-uint32_t it9137_get_postviterbi_bit_error_rate(uint8_t chip)
+uint32_t it9137_get_postviterbi_bit_error_rate(uint8_t chip, double *ptvitber)
 {
 	uint32_t post_error_count;
 	uint32_t post_bit_count;
@@ -512,7 +513,9 @@ uint32_t it9137_get_postviterbi_bit_error_rate(uint8_t chip)
 	if(!error){
 
 		postvitber=(double)post_error_count/(double)post_bit_count;
-		printf ("the post viterbi BER is %.3E.post_error_count=%d,post_bit_count=%d\n", postvitber,post_error_count,post_bit_count);
+		if (!ptvitber)
+			printf ("the post viterbi BER is %.3E.post_error_count=%d,post_bit_count=%d\n", postvitber,post_error_count,post_bit_count);
+		else  *ptvitber = postvitber;
 
 	}
 	return error;
@@ -530,7 +533,7 @@ uint32_t it9137_get_statistic(uint8_t chip)
 {
 
 	uint32_t error = Error_NO_ERROR;
-	Statistic statistic;  
+	Statistic statistic;
 	pthread_mutex_lock(&mux_thr);
 	error = Demodulator_getStatistic ( &it9130, 0, &statistic);
 	pthread_mutex_unlock(&mux_thr);

@@ -30,8 +30,10 @@ uint32_t it9137_get_signal_quality(uint8_t chip);
 uint32_t it9137_get_signal_quality_indication(uint8_t chip);
 uint32_t it9137_get_signal_strength(uint8_t chip);
 uint32_t it9137_get_signal_strength_indication(uint8_t chip);
-uint32_t it9137_get_signal_strength_dbm(uint8_t chip);
-uint32_t it9137_get_postviterbi_bit_error_rate(uint8_t chip);
+// enable signal strength (dbm) reads, liyenho
+uint32_t it9137_get_signal_strength_dbm(uint8_t chip, long *sigdbm);
+// enable post viterbi error rate reads, liyenho
+uint32_t it9137_get_postviterbi_bit_error_rate(uint8_t chip,double *ptvitber);
 uint32_t it9137_get_snr(uint8_t chip);
 uint32_t it9137_get_if_agc(uint8_t chip);
 uint32_t it9137_get_rf_agc_gain(uint8_t chip);

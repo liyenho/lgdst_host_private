@@ -1300,14 +1300,14 @@ int udpout_init(char* udpaddr)
 }
 #endif
 #ifdef LIB
-  void lgdst_vid_stats_rx() {
+  void lgdst_vid_stats_rx(long *sigdbm, double *ptvitber) {
 	  uint32_t error;
-		error = it9137_get_signal_strength_dbm(0);
+		error = it9137_get_signal_strength_dbm(0, sigdbm);
 		if (error) {
 			printf("error from it9137_get_signal_strength_dbm, 0x%08x\n", error);
 			return ;
 		}
-		error = it9137_get_postviterbi_bit_error_rate(0);
+		error = it9137_get_postviterbi_bit_error_rate(0, ptvitber);
 		if (error) {
 			printf("error from it9137_get_postviterbi_bit_error_rate, 0x%08x\n", error);
 			return ;
@@ -1624,9 +1624,9 @@ bool lgdst_upgrade_rx(int argc, char **argv)  // return -1 when failed, liyenho
 	if(error)goto _exit;
 	error=it9137_get_statistic(0);
 	if(error)goto _exit;
-	error=it9137_get_signal_strength_dbm(0);
+	error=it9137_get_signal_strength_dbm(0, NULL);
 	if(error)goto _exit;
-	error=it9137_get_postviterbi_bit_error_rate(0);
+	error=it9137_get_postviterbi_bit_error_rate(0, NULL);
 	if(error)goto _exit;
 	error=it9137_get_snr(0);
 	if(error)goto _exit;

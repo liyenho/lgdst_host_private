@@ -10,7 +10,7 @@ void sigint_handler_rx(int signum);
 #else
   void lgdst_ts_rx(uint8_t *tsbuf0);
 #endif
-void lgdst_vid_stats_rx();  // poll video channel state
+void lgdst_vid_stats_rx(long *, double *);  // poll video channel state, as well for sensitivity measure
 void lgdst_ctl_rec_rx(unsigned char *rpacket);
 void lgdst_ctl_snd_rx(unsigned char *tpacket);
 int lgdst_access_rx(int argc,char **argv, void **ret);
