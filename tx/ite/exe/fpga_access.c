@@ -129,7 +129,7 @@ static void ctrl_chsel_func(int entry) {
 }
 
 #ifdef LIB
-  int lgdst_access_rx(int argc,char **argv)
+  int lgdst_access_tx(int argc,char **argv)
 #else
   int main(int argc,char **argv)
 #endif
@@ -276,11 +276,11 @@ static void ctrl_chsel_func(int entry) {
 			}
 			else if (!strcasecmp(argv[3],"bm")) {
 				if (5 != argc) {
-					perror_exit("lgdst 0 rx bm 1/0 (1:to main, 0:upgrade)",-7);
+					perror_exit("lgdst 0 tx bm 1/0 (1:to main, 0:upgrade)",-7);
 				}
 				uint8_t mode = atoi(argv[4]);
 				if (1!=mode && 0!=mode) {
-					perror_exit("lgdst 0 rx bm 1/0 (1:to main, 0:upgrade)",-7);
+					perror_exit("lgdst 0 tx bm 1/0 (1:to main, 0:upgrade)",-7);
 				}
 				shmLgdst_proc->type = CMD1;
 				shmLgdst_proc->len = sizeof(mode);
@@ -292,7 +292,7 @@ static void ctrl_chsel_func(int entry) {
 			}
 			else if (!strcasecmp(argv[3],"Ua")) {
 				if (5 != argc) {
-					perror_exit("invalid command line parameters, lgdst 0 rx Ua bin-file-path",-3);
+					perror_exit("invalid command line parameters, lgdst 0 tx Ua bin-file-path",-3);
 				}
 				shmLgdst_proc->type = CMD1;
 				shmLgdst_proc->len = ((HOST_BUFFER_SIZE*2)<(strlen(argv[4])+1))?(HOST_BUFFER_SIZE*2):(strlen(argv[4])+1);
