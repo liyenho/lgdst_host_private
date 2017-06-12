@@ -142,7 +142,7 @@ pthread_t poll_thread= 0,
 #endif
 		  ctrl_thr_recv = 0,
 		  ctrl_thr_send = 0;
-pthread_mutex_t mux;
+pthread_mutex_t mux; // to be accessed in user.c
 
 int chsel_2072 = 0;
 
@@ -255,7 +255,7 @@ void *ctrl_poll_recv(void *arg)
 		// uart traffic convention (8N1) selected, also allowed tolerance on timing constraint,
 		// this field is most crucial setup!!! liyenho
 				uart_tv.tv_usec = 3/*1.5*/*(1000000*10+115200-1)/115200*sizeof(radio_rpacket1);
-/****************************************************
+/***************************************************************
  	#include <sched.h>
  		struct sched_param sp;
  		uint32_t sch_pol, sch_prio_x ;
@@ -269,7 +269,7 @@ void *ctrl_poll_recv(void *arg)
 		  	 perror_exit ("sched_get_priority_max failed", err);
 		  // get highest possible prio for SCHED_FIFO scheme
 		  sch_prio_x = err;
-****************************************************/
+***************************************************************/
 #endif
 	while (1==do_exit) {
 		bool failed_to_get, ctrl_sckt_ok = *(bool*)arg;
