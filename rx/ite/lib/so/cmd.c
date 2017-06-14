@@ -381,7 +381,7 @@ uint32_t Cmd_sendCommand (
         }
     }
 
-    usleep(/*50000*/10000);  // gap write and read ops with sufficient delay
+    usleep(/*50000*//*10000*/20000);  // gap write and read ops with sufficient delay
     bufferLength = 5 + readBufferLength;
 
     error = Cmd_busRx (bufferLength, buffer);
