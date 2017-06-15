@@ -677,10 +677,12 @@ static bool open_ini(int *setting_rec)
     			puts("invalid device address number, bailed out...");
     			libusb_exit(NULL);
     			return -2; }
+//printf("LINE @ %d\n",__LINE__);
 		devh = libusb_open_device_with_vid_pid_adr(NULL,
 					USB_DEV_VENDER, USB_DEV_PRODUCT,
-					/*USB_DEV_ADR*/(uint8_t)dev_addr);
+					/*USB_DEV_ADR*/(uint8_t)dev_addr);  // very weird problem, this option can't work?!@# liyenho
 #endif
+//printf("LINE @ %d\n",__LINE__);
 	// check for FW upgrade request from user cmdline, liyenho
     system_upgrade = (!strcasecmp(argv[2],"Ua0"))?4: // direct boot atmel
     						((!strcasecmp(argv[2],"Ua1"))?3:	// fwm upgrade atmel
