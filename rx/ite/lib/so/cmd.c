@@ -35,7 +35,7 @@ uint32_t Cmd_busTx (
          if (r == (sizeof(*acs)+(acs->dcnt-1))) goto exit;
          else error = -r; // error # defined in libusb, liyenho
 
-        short_sleep (/*0.1*/0.01);
+        (stream_on)? short_sleep (0.02) : short_sleep (0.01); // NACK_RETRIES = 16
     }
 
 exit:
@@ -63,7 +63,7 @@ uint32_t Cmd_busRx (
 						USB_HOST_MSG_IDX,
 						acs, sizeof(*acs)+(acs->dcnt-1), 0);
 			pthread_mutex_unlock(&mux);
-				short_sleep(/*0.1*/0.01); 	// validate echo after 0.1 sec
+				(stream_on)? short_sleep (0.02) : short_sleep (0.01); // NACK_RETRIES = 16
 
          if (r != (sizeof(*acs)+(acs->dcnt-1)))
          	continue ;

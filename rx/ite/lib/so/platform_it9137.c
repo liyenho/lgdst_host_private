@@ -557,3 +557,74 @@ uint32_t it9137_get_statistic(uint8_t chip)
 
 }
 
+#include <stdarg.h>
+  void write_v_formatted(FILE * stream, const char * format, ...) {
+	  va_list args;
+	  va_start (args, format);
+	  vfprintf (stream, format, args);
+	  va_end (args);
+  }
+uint32_t it9137_read_ofdm_registers(FILE *dump) {
+	uint32_t error, post_error, post_bit;
+	long strengthdbm ;
+	uint16_t abort;
+	uint8_t regs_read[8];
+
+#define OFDM_REGS_API(addr, numb) \
+	pthread_mutex_lock(&mux_thr); \
+	error=Standard_readRegisters(&it9130, 0, Processor_OFDM, addr, numb, regs_read); \
+	pthread_mutex_unlock(&mux_thr); \
+	if (error) goto failed ; \
+	switch(numb) { \
+		case 1: write_v_formatted(dump, "0x%04x: 0x%02x\n", addr, *regs_read); \
+						break; \
+		case 2: write_v_formatted(dump, "0x%04x: 0x%02x, 0x%02x\n", addr, *regs_read,*(regs_read+1)); \
+						break; \
+		case 7: write_v_formatted(dump, "0x%04x: 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x,\n", \
+																addr, *regs_read, *(regs_read+1), *(regs_read+2), *(regs_read+3), *(regs_read+4), *(regs_read+5), *(regs_read+6)); \
+						break; \
+	}
+
+	OFDM_REGS_API(0x0046, 1)
+	OFDM_REGS_API(0xF21B, 1)
+	OFDM_REGS_API(0x0150, 1)
+	OFDM_REGS_API(0x003C, 1)
+	OFDM_REGS_API(0xF999, 1)
+	OFDM_REGS_API(0xF27C, 2)
+	OFDM_REGS_API(0xF2A6, 2)
+	OFDM_REGS_API(0x005E, 1)
+	OFDM_REGS_API(0x00C7, 1)
+	OFDM_REGS_API(0x0043, 2)
+	OFDM_REGS_API(0x00C1, 1)
+	OFDM_REGS_API(0x00AF, 1)
+	OFDM_REGS_API(0xF279, 1)
+	OFDM_REGS_API(0xF10E, 7)
+	OFDM_REGS_API(0x00A7, 1)
+	OFDM_REGS_API(0xF02B, 1)
+	OFDM_REGS_API(0xFD37, 1)
+	OFDM_REGS_API(0x01A4, 1)
+	OFDM_REGS_API(0x01A4, 1)
+#undef OFDM_REGS_API
+
+	pthread_mutex_lock(&mux_thr);
+	error=Demodulator_getPostVitBer(&it9130, 0, & post_error, &post_bit, &abort);
+	pthread_mutex_unlock(&mux_thr);
+	if (error) goto failed ;
+		write_v_formatted(dump, "p_err: %d, p_bit: %d, abort: %d\n", post_error, post_bit, abort);
+
+	pthread_mutex_lock(&mux_thr);
+	error=Demodulator_getSignalStrengthDbm(&it9130, 0, &strengthdbm);
+	pthread_mutex_unlock(&mux_thr);
+	if (error) goto failed ; \
+		write_v_formatted(dump, "s_dbm: %d\n", strengthdbm);
+
+failed:
+	fflush(dump);
+
+	if (error) {
+		fputs("\n",dump); fputs("\n",dump); fputs("\n",dump);
+	}
+	else
+		fputs(".................................................................................\n",dump);
+	return error;
+}

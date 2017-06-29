@@ -92,7 +92,7 @@ uint32_t IT9510User_delay (
      *  delay(dwMs);
      *  return (0);
      */
-	int kilo = (stream_on)? 1000 : 250;
+	int kilo = (stream_on)? 1000 : 1000;
 	if(dwMs > 0)
 		usleep(dwMs*kilo); // cheating with a quarter of actual delay requested, liyenho
     return (ModulatorError_NO_ERROR);
@@ -159,7 +159,7 @@ uint32_t IT9510User_busTx (
 			pthread_mutex_unlock(&mux);
 			if (r == (sizeof(*acs)+(acs->dcnt-1))) goto exit;
 			else error = -r; // error # defined in libusb, liyenho
-			short_sleep (0.01);
+			(stream_on)? short_sleep (0.02) : short_sleep (0.01); // NACK_RETRIES = 16
 			}
 	 exit:
 
@@ -209,7 +209,7 @@ uint32_t IT9510User_busRx (
 		 	pthread_mutex_lock(&mux);
 			r =	libusb_control_transfer(devh,CTRL_OUT, USB_RQ,USB_HOST_MSG_TX_VAL,USB_HOST_MSG_IDX,	(unsigned char*)acs, sizeof(*acs)+(acs->dcnt-1), 0);
 			pthread_mutex_unlock(&mux);
-			short_sleep(0.01); 	// validate echo after 0.1 sec
+			(stream_on)? short_sleep (0.02) : short_sleep (0.01); // NACK_RETRIES = 16
 			if (r != (sizeof(*acs)+(acs->dcnt-1)))
 				continue ;
 			while(1) {

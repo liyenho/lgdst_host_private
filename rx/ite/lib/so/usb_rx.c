@@ -58,6 +58,8 @@ int  udpout_socket;
 fd_set udpin_fd;
 struct sockaddr_in udpout;
 
+bool stream_on = false ; // ctrl xfer access speed flag, liyenho
+
 static FILE *file = NULL;
 unsigned char audbuf[FRAME_SIZE_A*FRAME_BUFFS]__attribute__((aligned(8)));
 unsigned char vidbuf[FRAME_SIZE_V2]__attribute__((aligned(8)));
@@ -352,6 +354,14 @@ void lgdst_ctl_snd_rx(unsigned char *tpacket)
 		if (r < 0) {
 			perror_exit("event handler failed", r);
 			break;
+		}
+		static int loop = 200;
+		static FILE *dump_reg_rx;
+		if ( !loop-- ) {
+			if (!dump_reg_rx)
+				dump_reg_rx = fopen("./ofdm-registers-dump.txt", "wt");
+			it9137_read_ofdm_registers(dump_reg_rx);
+			loop = 200;	// poll every 2 sec
 		}
 	}
 
@@ -1183,8 +1193,9 @@ int init_rf2072(void)
 	int ii;
 	uint32_t frames_len;
 	int frag, sentsize;
-	tag = 0;
+	stream_on = true; // slow down ctrl xfer access at real time, liyenho
 #ifndef LIB
+	tag = 0;
 	dev_access *acs = (dev_access*)msg;
 	acs->access = TS_VID_ACTIVE;
 	acs->dcnt = 0; // no param

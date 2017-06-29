@@ -118,7 +118,7 @@ typedef enum{
 #define ITE_FW_HDR_LEN							(4)
 #define LO_Frequency 							/*1583000*/ 1686000
 
-
+extern bool stream_on ; // ctrl xfer access speed flag, liyenho
 intmax_t get_file_size(const char* file_path);
 void DieWithError(char *errorMessage) ;
 void at_exit(int status);

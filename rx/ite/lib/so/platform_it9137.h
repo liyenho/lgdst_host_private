@@ -39,4 +39,6 @@ uint32_t it9137_get_if_agc(uint8_t chip);
 uint32_t it9137_get_rf_agc_gain(uint8_t chip);
 uint32_t it9137_set_streamtype( StreamType  streamType);
 uint32_t it9137_set_architecture( Architecture  architecture);
+// special register query function for rx ofdm debug, liyenho
+uint32_t it9137_read_ofdm_registers(FILE *dump);
 #endif
