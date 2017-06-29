@@ -4,7 +4,7 @@
 #include <string.h>
 #include <pthread.h> // for thread-safe design
 
-static pthread_mutex_t mux_thr; // protect at 1st tier (user level)
+/*static*/ pthread_mutex_t mux_thr; // protect at 1st tier (user level)
 IT9130 it9130;
 
 uint32_t it9137_init(void)

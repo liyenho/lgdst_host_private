@@ -74,7 +74,8 @@ static pthread_t poll_thread= 0,
 				 lgdst_thread = 0,
 				 ctrl_thr_recv = 0,
 				 ctrl_thr_send = 0;
-/*static*/ pthread_mutex_t mux;
+extern pthread_mutex_t mux_thr; // (user level)
+ /*static*/ pthread_mutex_t mux;
 int tag=0;
 
 int chsel_2072 = 0;
@@ -418,27 +419,28 @@ void lgdst_ctl_snd_rx(unsigned char *tpacket)
 					memcpy(&shmLgdst_proc->access.hdr.data,&lclMem.hdr.data, shmLgdst_proc->len);
 				break;
 			case ACS:
-				if (shmLgdst_proc->echo) {
-					printf("ACS/echo: access= %d, dcnt= %d\n",(int)acs->access,(int)acs->dcnt);  // for debug
-					while(1) {
-						pthread_mutex_lock(&mux);
-						if (libusb_control_transfer(devh,CTRL_IN, USB_RQ,USB_HOST_MSG_RX_VAL,USB_HOST_MSG_IDX,(unsigned char*)acs, sizeof(*acs)-sizeof(acs->data[0]), 0)){
-							pthread_mutex_unlock(&mux);
-							break;
-						}
-						pthread_mutex_unlock(&mux);
-						short_sleep(0.0005);
-					}
-					memcpy(&shmLgdst_proc->access.hdr,&lclMem.hdr, sizeof(lclMem.hdr)-sizeof(lclMem.hdr.data[0]));
-					shmLgdst_proc->echo = false;
+				printf("ACS: direction = %d, processor = %d\n",(int)shmLgdst_proc->tag.wDir,(int)shmLgdst_proc->tag.wIndex);  // for debug
+				if (CTRL_IN==shmLgdst_proc->tag.wDir) {
+					pthread_mutex_lock(&mux_thr);
+					Demodulator_readRegisters (
+							NULL, // not used...
+					      0,
+					      shmLgdst_proc->tag.wIndex, // ofdm/link proc
+					      (uint32_t) acs->addr,
+					      acs->dcnt,
+					      acs->data) ;
+					pthread_mutex_unlock(&mux_thr);
 				}
-				else {
-					printf("ACS: type = %d, access = %d, dcnt=%d\n",(int)shmLgdst_proc->type,(int)acs->access,(int)acs->dcnt);  // for debug
-					pthread_mutex_lock(&mux);
-					libusb_control_transfer(devh,shmLgdst_proc->tag.wDir,USB_RQ,shmLgdst_proc->tag.wValue,shmLgdst_proc->tag.wIndex,(unsigned char*)acs, sizeof(*acs)+(acs->dcnt-1)*sizeof(uint16_t), 0);
-					pthread_mutex_unlock(&mux);
-					if (CTRL_IN==shmLgdst_proc->tag.wDir)
-						memcpy(&shmLgdst_proc->access.hdr,&lclMem.hdr, sizeof(lclMem.hdr)+(acs->dcnt-1)*sizeof(lclMem.hdr.data[0]));
+				else if (CTRL_OUT==shmLgdst_proc->tag.wDir) {
+					pthread_mutex_lock(&mux_thr);
+					Demodulator_writeRegisters (
+							NULL, // not used...
+					      0,
+					      shmLgdst_proc->tag.wIndex, // ofdm/link proc
+					      (uint32_t) acs->addr,
+					      acs->dcnt,
+					      acs->data) ;
+					pthread_mutex_unlock(&mux_thr);
 				}
 				break;
 			default:

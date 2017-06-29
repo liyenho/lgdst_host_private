@@ -18,7 +18,7 @@
 
 #define true								1
 #define false								0
-#define print_usage                    puts("lgdst 0 rx bm/Va/[Uc]/ns/s/pair-id/pair-locked/loc-gps/MDst/temp/ctune/calib/calib-qry/hopless/setFEC/SiGetProp/RSSI/ant-sw fpath [chidx] [bsz] [val0,val1,...], all numbers are in hex");
+#define print_usage                    puts("lgdst 0 rx r/w/bm/Va/[Uc]/ns/s/pair-id/pair-locked/loc-gps/MDst/temp/ctune/calib/calib-qry/hopless/setFEC/SiGetProp/RSSI/ant-sw fpath [chidx] [bsz] [val0,val1,...], all numbers are in hex");
 #define RAED_SETUP	\
 							shmLgdst_proc->type = ACS; \
 							shmLgdst_proc->tag.wDir = CTRL_OUT; \
@@ -200,7 +200,8 @@ static void ctrl_chsel_func(int entry) {
 			strcasecmp(argv[3], locGPS)&&
 			strcasecmp(argv[3], RSSI)&&
 			strcasecmp(argv[3], SiGetProp)&&
-			strcasecmp(argv[3], ant_sw)))
+			strcasecmp(argv[3], ant_sw)&&
+			 strcasecmp(argv[3],"r")&& strcasecmp(argv[3],"w")))
 			{
     	  	  	puts("invalid access mode...");
 					print_usage
@@ -362,6 +363,26 @@ static void ctrl_chsel_func(int entry) {
 					shmLgdst_proc->len = 2*sizeof(*acs->data); // boolean var + cbv value
 					shmLgdst_proc->tag.wValue = RADIO_COMM_VAL;
 					shmLgdst_proc->tag.wIndex = RADIO_CAL_DONE_IDX;
+				}
+			  if (!strcasecmp(argv[3],"r") ||!strcasecmp(argv[3],"w")) {
+				  shmLgdst_proc->type = ACS;
+					shmLgdst_proc->tag.wIndex =htoi(argv[4]); // ofdm or link proc
+    	  	 		int i, tmp, sz = htoi(argv[6]);
+		    	  	if (1>sz || (HOST_BUFFER_SIZE+1)<sz) {
+			    	 	puts("invalid block size...");
+			    	 	goto _exit; }
+    	  	 		acs->dcnt = sz; // must be less than HOST_BUFFER_SIZE+1
+			    	acs->addr = htoi(argv[5]); // start addr
+				  if ( 0==strcasecmp(argv[3],"w")) {
+						shmLgdst_proc->tag.wDir = CTRL_OUT;
+			    	   for (i=0; i<acs->dcnt; i++) {
+				    	   sscanf(argv[7+i], "%x", &tmp);
+			    		  acs->data[i] = tmp;
+		    		   }
+					}
+					else { // read access
+						shmLgdst_proc->tag.wDir = CTRL_IN;
+					}
 				}
 				else if (!strcasecmp(argv[3], hopless)) { // special radio mode for FCC test
 		    	  int32_t sect = htoi(argv[4]);
@@ -565,6 +586,14 @@ _read:
 				printf("RSSI value: %u\n", *val);
 				if (ret)
 					*(uint8_t**)ret = acs->data;
+			}
+			else if (false/*rx*/==work_mode && !strcasecmp(argv[3],"r")) {
+				uint32_t adr =acs->addr ;
+		     	 for (i=0; i<acs->dcnt; i++)
+		   	 	printf("xxxxxx 0x%02x received @ 0x%02x xxxxxx\n",
+		   	 					acs->data[i], adr+i);
+				 if (ret)
+				 	*(uint16_t**)ret = acs->data;
 			}
      }
    #endif
