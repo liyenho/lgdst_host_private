@@ -148,29 +148,74 @@ uint32_t IT9510User_busTx (
 	 int32_t 		i, r, msg[80]; // access buffer
 	 dev_access *acs = (dev_access*)msg;
 	 uint32_t     error = ModulatorError_NO_ERROR;
-	 acs->access = IT951X_WRITE;
-	 acs->dcnt = bufferLength;
-	 acs->addr = IT951X_ADDRESS;
-	 memcpy(acs->data, buffer, bufferLength);
+	int got_nack= 0, not_ready = 0, mis_align=0;
+	float wait = (stream_on)? 0.02 : 0.01;
+
 	 for (i = 0; i < IT9510User_MAXFRAMESIZE; i++)
 	 	{
+			 acs->access = IT951X_WRITE;
+			 acs->dcnt = bufferLength;
+			 acs->addr = IT951X_ADDRESS;
+			 memcpy(acs->data, buffer, bufferLength);
+
 		 	pthread_mutex_lock(&mux);
 			r = libusb_control_transfer(devh,CTRL_OUT, USB_RQ,USB_HOST_MSG_TX_VAL,USB_HOST_MSG_IDX,(unsigned char*)acs, sizeof(*acs)+(acs->dcnt-1), 0);
 			pthread_mutex_unlock(&mux);
-			if (r == (sizeof(*acs)+(acs->dcnt-1))) goto exit;
-			else error = -r; // error # defined in libusb, liyenho
-			(stream_on)? short_sleep (0.02) : short_sleep (0.01); // NACK_RETRIES = 16
-			}
-	 exit:
+			short_sleep (wait); // NACK_RETRIES = 16
 
-    return (error);
+         if (r != (sizeof(*acs)+(acs->dcnt-1)))
+         	continue ;
+
+			while(1) {
+		 		pthread_mutex_lock(&mux);
+			    acs->addr = IT951X_ADDRESS;
+			    acs->access = IT951X_WRITE;
+				  if (libusb_control_transfer(devh,CTRL_IN, USB_RQ,USB_HOST_MSG_RX_VAL,USB_HOST_MSG_IDX,
+							    (unsigned char*)acs, sizeof(*acs)-1/*byte*/, 0)) {
+						pthread_mutex_unlock(&mux);
+						break;
+					}
+				pthread_mutex_unlock(&mux);
+				short_sleep(0.0005);
+			}
+			 if (0>(int8_t)acs->dcnt )
+				 switch((int8_t)acs->dcnt) {
+					 case -128:
+					 		not_ready += 1;
+					 		printf("WARNING: User_busTx: write not ready cnt=%d\n",
+					 			not_ready);
+					 		short_sleep (0.1); // extra wait to get atmel ready
+					 		break;
+					 case -127:
+					 		got_nack += 1;
+					 		printf("WARNING: User_busTx: write nack cnt=%d\n",
+					 			got_nack);
+					 		break;
+					 default :
+					 		mis_align += 1;
+					 		printf("WARNING: User_busTx: write misaligned cnt=%d\n",
+					 			mis_align);
+					 		error = Error_I2C_WRITE_FAILED;
+					 		goto exit;
+				 }
+			 else  // transfer is ok
+			 	break;
+			short_sleep (0.01);
+		}
+	 exit:
+    return (IT9510User_MAXFRAMESIZE==i)?Error_I2C_WRITE_FAILED:(error);
 }
 uint32_t IT9510User_busTx2 (
       IT9510INFO*    modulator,
       uint32_t           bufferLength,
       uint8_t*           buffer
 ) {
-
+#if 1
+		return IT9510User_busTx (
+		      modulator,
+		      bufferLength,
+		      buffer	);
+#else
 	 int32_t 		i, r, msg[80]; // access buffer
 	 dev_access *acs = (dev_access*)msg;
 	 uint32_t     error = ModulatorError_NO_ERROR;
@@ -190,6 +235,7 @@ uint32_t IT9510User_busTx2 (
 	 exit:
 
     return (error);
+#endif
 }
 
 
@@ -201,36 +247,72 @@ uint32_t IT9510User_busRx (
      int32_t	  i, r, msg[80]; // access buffer
      dev_access *acs = (dev_access*)msg;
 	 uint32_t     error = ModulatorError_NO_ERROR;
-	 acs->access = IT951X_READ;
-	 acs->dcnt = bufferLength;
-	 acs->addr = IT951X_ADDRESS;
+	int got_nack =0, not_ready = 0, mis_align=0;
+	float wait=(stream_on)?0.02:0.01;
+
 	 for (i = 0; i < IT9510User_MAXFRAMESIZE; i++)
 	 {
+		 acs->access = IT951X_READ;
+		 acs->dcnt = bufferLength;
+		 acs->addr = IT951X_ADDRESS;
+
 		 	pthread_mutex_lock(&mux);
 			r =	libusb_control_transfer(devh,CTRL_OUT, USB_RQ,USB_HOST_MSG_TX_VAL,USB_HOST_MSG_IDX,	(unsigned char*)acs, sizeof(*acs)+(acs->dcnt-1), 0);
 			pthread_mutex_unlock(&mux);
-			(stream_on)? short_sleep (0.02) : short_sleep (0.01); // NACK_RETRIES = 16
+			short_sleep (wait); // NACK_RETRIES = 16
+
 			if (r != (sizeof(*acs)+(acs->dcnt-1)))
 				continue ;
+
 			while(1) {
 		 		pthread_mutex_lock(&mux);
-				if (libusb_control_transfer(devh,CTRL_IN, USB_RQ,USB_HOST_MSG_RX_VAL,USB_HOST_MSG_IDX,	(unsigned char*)acs, sizeof(*acs)+(acs->dcnt-1), 0)){
+				if (libusb_control_transfer(devh,CTRL_IN, USB_RQ,USB_HOST_MSG_RX_VAL,USB_HOST_MSG_IDX,
+								(unsigned char*)acs, sizeof(*acs)+(acs->dcnt-1), 0)){
 					pthread_mutex_unlock(&mux);
 					break;
 				}
 				pthread_mutex_unlock(&mux);
 				short_sleep(0.0005);
 			}
-			break ;
+			 if (0>(int8_t)acs->dcnt )
+				 switch((int8_t)acs->dcnt) {
+					 case -128:
+					 		not_ready += 1;
+					 		printf("WARNING: Cmd_busRx: read not ready cnt=%d\n",
+					 			not_ready);
+			 				short_sleep (0.1); // extra wait to get atmel ready
+					 		break;
+					 case -127:
+					 		got_nack += 1;
+					 		printf("WARNING: Cmd_busRx: read nack cnt=%d\n",
+					 			got_nack);
+					 		break;
+					 default :
+					 		mis_align += 1;
+					 		printf("WARNING: Cmd_busRx: read misaligned cnt=%d\n",
+					 			mis_align);
+					 		error = Error_I2C_READ_FAILED;
+					 		goto exit;
+				 }
+			 else  // transfer is ok
+				break ;
+			short_sleep (wait);
 	  }
 	 memcpy(buffer, acs->data, bufferLength);
-	 return (error);
+exit:
+	 return (IT9510User_MAXFRAMESIZE==i)?Error_I2C_READ_FAILED:(error);
 }
 uint32_t IT9510User_busRx2 (
       IT9510INFO*    modulator,
       uint32_t           bufferLength,
       uint8_t*           buffer
 ) {
+#if 1
+		return IT9510User_busRx (
+		      modulator,
+		      bufferLength,
+		      buffer	);
+#else
      int32_t	  i, r, msg[80]; // access buffer
      dev_access *acs = (dev_access*)msg;
 	 uint32_t     error = ModulatorError_NO_ERROR;
@@ -258,6 +340,7 @@ uint32_t IT9510User_busRx2 (
 	  }
 	 memcpy(buffer, acs->data, bufferLength);
 	 return (error);
+#endif
 }
 
 

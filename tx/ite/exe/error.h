@@ -104,6 +104,10 @@
 #define ModulatorError_I2C_WRITE_NO_ACK					0x02003000ul
 #define ModulatorError_I2C_DATA_LOW_FAIL				0x02004000ul
 
+/*  Added by liyenho for I2C access error */
+#define Error_I2C_WRITE_FAILED					0x02003001ul
+#define Error_I2C_READ_FAILED					0x02003002ul
+
 /** Error Code of USB Module */
 #define ModulatorError_USB_NULL_HANDLE					0x03010001ul
 #define ModulatorError_USB_WRITEFILE_FAIL				0x03000002ul
@@ -155,7 +159,7 @@
 #define ModulatorError_AF9035U2I                        0x04000000ul
 #define ModulatorError_EAGLESLAVE_FAIL                  0x04000000ul
 
-/** Error code of Omega */						
+/** Error code of Omega */
 #define ModulatorError_TUNER_INIT_FAIL					0x05000000ul
 #define ModulatorError_OMEGA_TUNER_INIT_FAIL			0x05000000ul
 
