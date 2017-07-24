@@ -397,7 +397,17 @@ int main(int argc, char **argv)
 	else if (1 == res) { // system upgrade or atmel reboot
 		res = (int)lgdst_upgrade_rx(argc, argv);
 		lgdst_deinit_rx(res);
+		goto end;
 	}
+		sleep(1);
+		puts("Starting pair-id cmd");
+		send_pair_id_cmd();
+	res = lgdst_init_vid_rx();
+	if (res > 0 ) {  // failed to init video, bail out
+		lgdst_deinit_rx(res);
+	}
+	if (1==do_exit_m)
+		goto end;  // this is crucial step after adding vscan feature, liyenho
 	else {  // normal operation
 		printf("Creating threads\n");
 		r = pthread_create(&thread_rec_rx, NULL, ctrl_recv_rx, NULL);
@@ -430,9 +440,6 @@ int main(int argc, char **argv)
 
     //user lgdst commands here
 		puts("Finished starting threads");
-		sleep(5);
-		puts("Starting pair-id cmd");
-		send_pair_id_cmd();
 
 		struct timeval tstart,tend,tdelta;
 		const struct timeval lfoop= {600, 0}; // 10 min run time

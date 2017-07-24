@@ -1543,7 +1543,7 @@ bool lgdst_upgrade_rx(int argc, char **argv)  // return -1 when failed, liyenho
 #endif
 //set channel value = set channel -1583000
 #ifdef LIB
-  int lgdst_init_rx0(int argc, char **argv)
+  int lgdst_init_vid_rx()
 #else
   uint32_t  main(int argc,char **argv)
 #endif
@@ -1551,12 +1551,14 @@ bool lgdst_upgrade_rx(int argc, char **argv)  // return -1 when failed, liyenho
 	Pid pid;
 	pid.value=0x100;
 	uint32_t error=Error_NO_ERROR;
-#if (/*1*/0)
-	init_device();
-#else
-	init_device(argc, argv);
-   if (system_upgrade)
-   	return 1;	// system upgrade or atmel reboot...
+#ifndef LIB
+	#if (/*1*/0)
+		init_device();
+	#else
+		init_device(argc, argv);
+	   if (system_upgrade)
+	   	return 1;	// system upgrade or atmel reboot...
+	#endif
 #endif
 #if /*true*/false  // test atmel encapsulation of asic host
 	// initialize video subsystem inside atmel
@@ -1599,6 +1601,11 @@ bool lgdst_upgrade_rx(int argc, char **argv)  // return -1 when failed, liyenho
 	error=it9137_init();
 	if(error)goto _exit;
 
+#if /*true*/false  // dynamic video channel scan
+	if (it9137_video_channel_scan(False))
+		goto _exit;  // channel scan failed
+#else // normal routine
+  	bool istpslocked = true;
 	//error=it9137_get_firmwareversion();
 	//if(error)goto _exit;
 //     error= it9137_scan_channel(0,747000,832000, 6000);
@@ -1620,7 +1627,7 @@ bool lgdst_upgrade_rx(int argc, char **argv)  // return -1 when failed, liyenho
 
 	int i=0;
 	while(i<1){
-	error=it9137_check_tpslocked(0);
+	error=it9137_check_tpslocked(0, &istpslocked);
 	if(error)goto _exit;
 	error=it9137_check_mpeg2locked(0);
 	if(error)goto _exit;
@@ -1651,6 +1658,7 @@ bool lgdst_upgrade_rx(int argc, char **argv)  // return -1 when failed, liyenho
 	}
 #endif
 #endif
+#endif
 ready_wait_for_mloop = true;
 #ifndef LIB
 	udpout_init(servIP);
@@ -1676,7 +1684,13 @@ _exit:
 }
 #ifdef LIB
   int lgdst_init_rx(int argc, char **argv) {
-  	return lgdst_init_rx0(argc, argv);
+#if (/*1*/0)
+	init_device();
+#else
+	init_device(argc, argv);
+   if (system_upgrade)
+   	return 1;	// system upgrade or atmel reboot...
+#endif
   }
  uint32_t lgdst_reacquire_vch();
   uint32_t lgdst_reacquire_vch() {

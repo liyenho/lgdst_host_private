@@ -18,6 +18,7 @@ int lgdst_access_rx(int argc,char **argv, void **ret);
   int lgdst_init_rx();
 #else
   int lgdst_init_rx(int argc, char **argv);
+  int lgdst_init_vid_rx();
 #endif
 void lgdst_deinit_rx(int rcode);
 /* internal function, do not invoke directly but using command line */
