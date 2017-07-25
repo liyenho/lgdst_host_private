@@ -18,12 +18,17 @@ uint32_t it9137_reset(void);
 uint32_t it9137_reboot(void);
 uint32_t it9137_get_firmwareversion(void);
 uint32_t it9137_acquire_channel(uint8_t chip,uint32_t frequency,uint16_t bandwidth);
-uint32_t it9137_scan_channel(uint8_t chip,uint32_t start_frequency,uint32_t end_frequency, uint16_t bandwidth);
+uint32_t it9137_scan_channel(uint8_t chip,
+																	uint32_t start_frequency,
+																	uint32_t end_frequency,
+																	uint16_t bandwidth,
+																	uint16_t bw_total, // include guard band
+																	long *strengthdbm);
 uint32_t it9137_control_pid_filter(uint8_t chip,uint8_t control);
 uint32_t it9137_reset_pid_filter(uint8_t chip);
 uint32_t it9137_add_pid_filter(uint8_t chip,uint8_t index,Pid pid);
 uint32_t it9137_control_power_saving(uint8_t chip,uint8_t control);
-uint32_t it9137_check_tpslocked(uint8_t chip);
+uint32_t it9137_check_tpslocked(uint8_t chip, void* istpslocked);
 uint32_t it9137_check_mpeg2locked(uint8_t chip);
 uint32_t it9137_get_channel_modulation(uint8_t chip);
 uint32_t it9137_get_signal_quality(uint8_t chip);
@@ -39,6 +44,8 @@ uint32_t it9137_get_if_agc(uint8_t chip);
 uint32_t it9137_get_rf_agc_gain(uint8_t chip);
 uint32_t it9137_set_streamtype( StreamType  streamType);
 uint32_t it9137_set_architecture( Architecture  architecture);
+// video channel scan facility
+uint32_t it9137_video_channel_scan(Booll ran_once);
 // special register query function for rx ofdm debug, liyenho
 uint32_t it9137_read_ofdm_registers(FILE *dump);
 #endif

@@ -124,13 +124,17 @@ uint32_t it9137_acquire_channel(uint8_t chip,uint32_t frequency,uint16_t bandwid
 
 }
 
-uint32_t it9137_scan_channel(uint8_t chip,uint32_t start_frequency,uint32_t end_frequency, uint16_t bandwidth)
+uint32_t it9137_scan_channel(uint8_t chip,
+																	uint32_t start_frequency,
+																	uint32_t end_frequency,
+																	uint16_t bandwidth,
+																	uint16_t bw_total, // include guard band
+																	long *strengthdbm)
 {
 	uint32_t error=Error_NO_ERROR;
 
 	uint32_t  frequency;
-	long strengthdbm;
-	for (frequency =start_frequency ; frequency <= end_frequency; frequency += bandwidth) {
+	for (frequency =start_frequency ; frequency <= end_frequency; frequency += bw_total) {
 		pthread_mutex_lock(&mux_thr);
 		error = Demodulator_acquireChannel( &it9130, chip, bandwidth, frequency);
 		pthread_mutex_unlock(&mux_thr);
@@ -141,15 +145,15 @@ uint32_t it9137_scan_channel(uint8_t chip,uint32_t start_frequency,uint32_t end_
 
 			printf("frequency=%d,bandwidth=%d\n",frequency,bandwidth);
 		}
-		usleep(400000);
+		usleep(/*400000*/250000); // is this magic # to wait for stable signal strength? liyenho
 		pthread_mutex_lock(&mux_thr);
-		error=Demodulator_getSignalStrengthDbm(&it9130, chip, &strengthdbm);
+		error=Demodulator_getSignalStrengthDbm(&it9130, chip, strengthdbm);
 		pthread_mutex_unlock(&mux_thr);
 		if(!error){
 
-			printf("the signal strength is %ld\n",strengthdbm);
+			printf("the signal strength is %ld\n",*strengthdbm);
 		}
-
+		strengthdbm += 1;
 
 	}
 	return error;
@@ -248,16 +252,15 @@ uint32_t it9137_control_power_saving(uint8_t chip,uint8_t control)
 	return error;
 }
 
-uint32_t it9137_check_tpslocked(uint8_t chip)
+uint32_t it9137_check_tpslocked(uint8_t chip, void* istpslocked)
 {
 
 	uint32_t error=Error_NO_ERROR;
-	Booll istpslocked;
 	pthread_mutex_lock(&mux_thr);
-	error=Demodulator_isTpsLocked(&it9130, chip, &istpslocked);
+	error=Demodulator_isTpsLocked(&it9130, chip, (Booll*)istpslocked);
 	pthread_mutex_unlock(&mux_thr);
 	if(!error){
-		if(istpslocked) printf("TPS is locked.\n");
+		if(*(Booll*)istpslocked) printf("TPS is locked.\n");
 		else printf("TPS is not locked.\n");
 	}
 	return error;
@@ -555,6 +558,150 @@ uint32_t it9137_get_statistic(uint8_t chip)
 
 	return error;
 
+}
+
+#include <libusb.h>
+#include "usb_rx.h"
+#include "timer.h"
+
+extern struct libusb_device_handle *devh;
+extern pthread_mutex_t mux;
+extern volatile int do_exit ;
+extern unsigned char radio_tpacket[RADIO_USR_TX_LEN],
+												radio_rpacket[RADIO_USR_RX_LEN+RADIO_INFO_LEN];
+
+uint32_t it9137_video_channel_scan(Booll ran_once) {
+	puts("...... begin to scanning available video channels ......");
+  static long vif, tif, chdbm[NUM_OF_VID_CH];
+  	static short tch, chidx[NUM_OF_VID_CH];
+  	static short vch = -1; /*invalid channel #*/
+  	bool istpslocked;
+  uint32_t error;
+  	int i, ch, ch1;
+	if (!ran_once) {
+	  	for (ch=0; ch<NUM_OF_VID_CH; ch++)
+	  		chidx[ch] = ch;	// setup ch in sequential order at start
+		error=it9137_scan_channel(0, VID_IF_CH_BASE, VID_IF_CH_CEIL, VID_CH_BW, VID_CH_TTL, chdbm);
+		if (error) return error;
+		// sort thru chan strength vector
+	#define SWAP(a,b,t) t=a; a=b; b=t;
+		for (ch=0; ch<NUM_OF_VID_CH-1; ch++)
+			for (ch1=0; ch1<NUM_OF_VID_CH-1; ch1++)
+				if (chdbm[ch1] > chdbm[ch1+1]) {
+					SWAP(chidx[ch1], chidx[ch1+1], tch);
+					SWAP(chdbm[ch1], chdbm[ch1+1], tif);
+				}
+	#undef SWAP
+	}
+	for (ch=0; ch<NUM_OF_VID_CH; ch++)
+		if (VID_CH_STR_THR >= chdbm[ch]) {
+			ch1 = (long)chidx[ch]*VID_CH_TTL+VID_IF_CH_BASE;
+			error = it9137_acquire_channel(0, ch1, VID_CH_BW);
+			if (error) return error;
+			error = it9137_check_tpslocked(0, &istpslocked);
+			if(error) return error;
+			if (False == istpslocked &&
+					vch != chidx[ch]) { // avoid choosing current channel, dynamic channel selection at any time
+				vch = chidx[ch];
+				vif = ch1; // available channel found
+				break ;
+			}
+			vif = -1L;
+		}
+		else break;
+	if (-1L == vif) {
+		perror("failed to find available video channel, bailed out");
+		return (uint32_t)-1 ;
+	} else {
+		printf("...... video channel IF = %d @ %d selected......\n", vif, vch);
+	}
+	// send video selected channel index to Tx side
+	for(i=0;i<RADIO_USR_TX_LEN;i++) {
+		radio_tpacket[i]= \
+			RADIO_USR_TX_LEN-i-1; // signature of vid ch sel packet
+	}
+	radio_tpacket [RADIO_USR_TX_LEN/2] =vch;
+	i = 0;
+	do {
+		pthread_mutex_lock(&mux);
+		 libusb_control_transfer(devh,
+		 													CTRL_OUT,
+		 													USB_RQ,
+															RADIO_COMM_VAL,
+															RADIO_DATA_TX_IDX,
+															radio_tpacket,
+															RADIO_USR_TX_LEN,
+															0);
+		pthread_mutex_unlock(&mux);
+		usleep(CTRL_SEND_POLLPERIOD);
+	} while ( 100 > i++);  // flood Tx with vch sel msg
+	if (1 == do_exit)
+		short_sleep(10);  // allow sufficient time for tx to startup video
+	// wait for video coming from TX
+	while (1 == do_exit) {
+		error = it9137_acquire_channel(0, ch1, 6000);
+		if (error) return error;
+		error = it9137_check_tpslocked(0, &istpslocked);
+		if(error) return error;
+		if (istpslocked)
+			break ;	// video started @ tx
+		else {
+#if 0	// disable acknowledge process, liyenho
+			bool vack;
+			while(1 == do_exit) {
+		 		pthread_mutex_lock(&mux);
+		 		if (libusb_control_transfer(devh,
+						CTRL_IN,
+						USB_RQ,
+						RADIO_COMM_VAL,
+						RADIO_DATA_RX_IDX,
+						radio_rpacket,
+						sizeof(radio_rpacket),
+						0)){
+					pthread_mutex_unlock(&mux);
+					break;
+				}
+				pthread_mutex_unlock(&mux);
+				short_sleep(0.0005);
+			}
+			for(i=0;i<RADIO_USR_RX_LEN;i++) { // RADIO_USR_RX_LEN==RADIO_USR_TX_LEN! liyenho
+				if ( RADIO_USR_RX_LEN/2 != i &&
+					RADIO_USR_TX_LEN-i-1 != radio_rpacket[i])
+					break; // signature of vid ch ack packet
+			}
+#endif
+			if (1 == do_exit)
+#if 0
+				usleep(CTRL_SEND_POLLPERIOD); // send again asap
+#else
+				usleep(1.0); // send again after a sec
+#endif
+#if 0	// disable acknowledge process, liyenho
+			if (RADIO_USR_RX_LEN != i) {
+				continue;
+			}
+			vack = True==radio_rpacket[RADIO_USR_RX_LEN/2];
+			if (!vack)
+#endif
+			{
+				i = 0;
+				do {
+					pthread_mutex_lock(&mux);
+					 libusb_control_transfer(devh,
+					 													CTRL_OUT,
+					 													USB_RQ,
+																		RADIO_COMM_VAL,
+																		RADIO_DATA_TX_IDX,
+																		radio_tpacket,
+																		RADIO_USR_TX_LEN,
+																		0);
+					pthread_mutex_unlock(&mux);
+					usleep(CTRL_SEND_POLLPERIOD);
+				} while ( 100 > i++);  // flood Tx with vch sel msg, and to keep ctrl radio locked!!! liyenho
+			}
+		}
+	}
+	return error;
 }
 
 #include <stdarg.h>
