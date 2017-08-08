@@ -178,8 +178,8 @@ uint32_t IT9510User_busTx (
 				pthread_mutex_unlock(&mux);
 				short_sleep(0.0005);
 			}
-			 if (0>(int8_t)acs->dcnt )
-				 switch((int8_t)acs->dcnt) {
+			 if (0>(int8_t)acs->access )
+				 switch((int8_t)acs->access) {
 					 case -128:
 					 		not_ready += 1;
 					 		printf("WARNING: User_busTx: write not ready cnt=%d\n",
@@ -274,8 +274,8 @@ uint32_t IT9510User_busRx (
 				pthread_mutex_unlock(&mux);
 				short_sleep(0.0005);
 			}
-			 if (0>(int8_t)acs->dcnt )
-				 switch((int8_t)acs->dcnt) {
+			 if (0>(int8_t)acs->access )
+				 switch((int8_t)acs->access) {
 					 case -128:
 					 		not_ready += 1;
 					 		printf("WARNING: Cmd_busRx: read not ready cnt=%d\n",
