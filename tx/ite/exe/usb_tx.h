@@ -48,7 +48,6 @@ typedef int bool;
 #define USB_DEV_EP									2	// atmel CDC data ep 2 out
 #define EP_DATA										(USB_DEV_EP | LIBUSB_ENDPOINT_OUT)
 
-#define TEST										2	// synchronous file based block transfer
 #define ITERS										(FILE_LEN/FRAME_SIZE_A)
 #define FRAME_BUFFS									5
 #define TIMEOUT										1000		// audio time out @ 10 msec
@@ -68,7 +67,17 @@ typedef int bool;
 #define HOST_BUFFER_SIZE							(256-1) // max data len-1
 #define UDPIN_PORT 									5553
 #define UDPIN_MULTIADDR 							"127.0.0.1"
+
 #define LO_Frequency 								/*1583000*/ 1686000
+	#define VID_CH_BW							6000
+	#define VID_CH_TTL							(VID_CH_BW+1000) // include guard band
+	#define MAX_VID_CH_F					2478000
+	#define MIN_VID_CH_F					2406000
+	#define NUM_OF_VID_CH			((MAX_VID_CH_F-MIN_VID_CH_F)/VID_CH_TTL)
+ #if NUM_OF_VID_CH < 3
+	#error Number of video channels cannot be less than 3
+ #endif
+	#define VID_IF_CH_BASE				(MIN_VID_CH_F-LO_Frequency)
 
 enum TYPE {
 	CMD0,	/*w/o params*/
