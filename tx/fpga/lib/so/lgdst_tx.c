@@ -1231,7 +1231,7 @@ static int receive(int usec, unsigned char *pb, uint32_t bytes) {
 	  }
     if (FD_ISSET(udpin_socket,&udpin_fd)) {
       // Ethernet input data processing
-    	  recvsize= recvfrom(udpin_socket,pbf,UDP_PACKET_MAX,0,
+    	  recvsize= recvfrom(udpin_socket,pbf,/*UDP_PACKET_MAX*/bytes,0,
 										  (struct sockaddr *)&udpin,&udpin_len);
       loc_buf_ptr += recvsize;
       pbf += recvsize;
