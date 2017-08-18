@@ -20,7 +20,7 @@ uint32_t it9517_loadIQ_calibration_table (const char*file_name)
 	FILE *pfile = NULL;
 	char buf[16]={0};
 	char inputFile[255]={0};
-	int dAmp = 0;			  
+	int dAmp = 0;
 	int dPhi = 0;
 	int row;
 	uint16_t groups;
@@ -65,9 +65,9 @@ uint32_t it9517_loadIQ_calibration_table (const char*file_name)
 	return error;
 }
 
-//id_bus=Bus_I2C  
+//id_bus=Bus_I2C
 //stream_type= SERIAL_TS_INPUT
-uint32_t it9517_initialize (uint8_t id_bus,TsInterface stream_type) 
+uint32_t it9517_initialize (uint8_t id_bus,TsInterface stream_type)
 {
 	pthread_mutex_init(&mux_thr, NULL);
 	uint32_t error = ModulatorError_NO_ERROR;
@@ -103,7 +103,7 @@ exit:
 	return error;
 }
 
-uint32_t it9517_monitor_version (void) 
+uint32_t it9517_monitor_version (void)
 {
 	uint32_t error = ModulatorError_NO_ERROR;
 	uint32_t version = 0;
@@ -131,43 +131,43 @@ uint32_t it9517_monitor_version (void)
 	return error;
 }
 
-uint32_t it9517_suspend(uint8_t enable) 
+uint32_t it9517_suspend(uint8_t enable)
 {
 	uint32_t error = ModulatorError_NO_ERROR;
 	pthread_mutex_lock(&mux_thr);
 	error = IT9510_suspendMode(&eagle,enable);
 	pthread_mutex_unlock(&mux_thr);
-	if (error) 
+	if (error)
 		printf("IT9510 suspend failed! error = 0x%08x\n", error);
-	else 
+	else
 		printf("IT9510 suspend successful.\n");
 
 	return error;
 }
 
-uint32_t it9517_reset(void) 
+uint32_t it9517_reset(void)
 {
 	uint32_t error = ModulatorError_NO_ERROR;
 	pthread_mutex_lock(&mux_thr);
 	error = IT9510_reset(&eagle);
 	pthread_mutex_unlock(&mux_thr);
-	if (error) 
+	if (error)
 		printf("IT9510 reset failed! error = 0x%08x\n", error);
-	else 
+	else
 		printf("IT9510 reset successful.\n");
 
 	return error;
 }
 
-uint32_t it9517_reboot(void) 
+uint32_t it9517_reboot(void)
 {
 	uint32_t error = ModulatorError_NO_ERROR;
 	pthread_mutex_lock(&mux_thr);
 	error = IT9510_TXreboot(&eagle);
 	pthread_mutex_unlock(&mux_thr);
-	if (error) 
+	if (error)
 		printf("IT9510 TXreboot Failed! Error = 0x%08x\n", error);
-	else 
+	else
 		printf("IT9510 TXreboot Back-To-Boot code successful.\n");
 
 	return error;
@@ -199,31 +199,31 @@ uint32_t it9517_set_channel_modulation(ChannelModulation channel_modulation,Null
 	pthread_mutex_lock(&mux_thr);
 	error=IT9510_setNullPacketMode(&eagle,eagle.nullPacketMode);
 	pthread_mutex_unlock(&mux_thr);
-	if (error){ 
+	if (error){
 		printf("IT9510 set NullPacketMode failed.\n");
 		goto exit;
 	}
 	else{
-		printf("IT9510 set NullPacketMode successful.\n");	
+		printf("IT9510 set NullPacketMode successful.\n");
 	}
 	pthread_mutex_lock(&mux_thr);
 	error = IT9510_setTXChannelModulation(&eagle, &channelModulation);
 	pthread_mutex_unlock(&mux_thr);
-	if (error){ 
+	if (error){
 		printf("IT9510 setChannelModulation failed.\n");
 		goto exit;
 	}
 	else{
-		printf("IT9510 set Channel Modulation successful.\n");	
+		printf("IT9510 set Channel Modulation successful.\n");
 	}
 exit:
 	if (error)  printf("error=%x,%d\n",error,__LINE__);
 
-	return error;	
+	return error;
 
 }
 
-//frequency=frequency-1583000 
+//frequency=frequency-1583000
 uint32_t it9517_set_frequency(uint32_t frequency)
 {
 	uint32_t error = ModulatorError_NO_ERROR;
@@ -240,7 +240,7 @@ uint32_t it9517_set_frequency(uint32_t frequency)
 	else{
 		printf("IT9510 setFrequency successful.\n");
 	}
-exit:				
+exit:
 	if (error)  printf("error=%x,%d\n",error,__LINE__);
 
 	return error;
@@ -261,7 +261,7 @@ uint32_t it9517_set_ts_interface(TsInterface   streamType)
 	else{
 		printf("IT9510 setTsInterface successful.\n");
 	}
-exit:				
+exit:
 	if (error)  printf("error=%x,%d\n",error,__LINE__);
 
 	return error;
@@ -282,14 +282,14 @@ uint32_t it9517_control_power_saving(uint8_t control)
 	else{
 		printf("IT9510 controlPowerSaving successful.\n");
 	}
-exit:				
+exit:
 	if (error)  printf("error=%x,%d\n",error,__LINE__);
 
 	return error;
 
 }
 
-//frequency=frequency-1583000 
+//frequency=frequency-1583000
 uint32_t it9517_acquire_channel(uint32_t frequency,uint16_t bandwidth)
 {
 	uint32_t error = ModulatorError_NO_ERROR;
@@ -306,7 +306,7 @@ uint32_t it9517_acquire_channel(uint32_t frequency,uint16_t bandwidth)
 	else{
 		printf("IT9510 acquireTxChannel successful.\n");
 	}
-exit:				
+exit:
 	if (error)  printf("error=%x,%d\n",error,__LINE__);
 
 	return error;
@@ -320,7 +320,7 @@ uint32_t it9517_enable_transmission_mode(uint8_t enable)
 	pthread_mutex_lock(&mux_thr);
 	error = IT9510_setTxModeEnable(&eagle, enable);
 	pthread_mutex_unlock(&mux_thr);
-	if (error){ 
+	if (error){
 		printf("IT9510 setTxModeEnable failed.\n");
 		goto exit;
 	}else{
@@ -328,11 +328,11 @@ uint32_t it9517_enable_transmission_mode(uint8_t enable)
 			printf("IT9510 setTxModeEnable enable successful.\n");
 		else
 			printf("IT9510 setTxModeEnable disable successful.\n");
-	}	
-exit:				
+	}
+exit:
 	if (error)  printf("error=%x,%d\n",error,__LINE__);
 
-	return error;	
+	return error;
 
 }
 
@@ -351,7 +351,7 @@ uint32_t it9517_get_output_gain(void)
 	else{
 		printf("IT9510 getOutputGain successful. gain = %d\n",gain);
 	}
-exit:				
+exit:
 	if (error)  printf("error=%x,%d\n",error,__LINE__);
 
 	return error;
@@ -373,7 +373,7 @@ uint32_t it9517_get_output_gain_range(uint32_t frequency,uint16_t bandwidth)
 	else{
 		printf("IT9510 getGainRange successful. max_gain = %d,min_gain=%d\n",max_gain,min_gain);
 	}
-exit:				
+exit:
 	if (error)  printf("error=%x,%d\n",error,__LINE__);
 
 	return error;
@@ -393,14 +393,14 @@ uint32_t it9517_adjust_output_gain(int gain)
 	else{
 		printf("IT9510 AdjustOutputGain successful. gain = %d\n",gain);
 	}
-exit:				
+exit:
 	if (error)  printf("error=%x,%d\n",error,__LINE__);
 
 	return error;
 
 }
 
-//0:pass the specified PIDs<Pass mode> 
+//0:pass the specified PIDs<Pass mode>
 //1:filter the specified PIDs<Block mode>
 //0:disable PidFilter
 //1:enable PidFilter
@@ -418,9 +418,9 @@ uint32_t it9517_control_pidfilter(uint8_t control,uint8_t enable)
 		if(enable)
 			printf("IT9510 enable PidFilter successful.\n");
 		else
-			printf("IT9510 disable PidFilter successful.\n");	
+			printf("IT9510 disable PidFilter successful.\n");
 	}
-exit:				
+exit:
 	if (error)  printf("error=%x,%d\n",error,__LINE__);
 
 	return error;
@@ -440,7 +440,7 @@ uint32_t it9517_reset_pidfilter(void)
 	else{
 		printf("IT9510 resetPidFilter successful.\n");
 	}
-exit:				
+exit:
 	if (error)  printf("error=%x,%d\n",error,__LINE__);
 
 	return error;
@@ -456,14 +456,14 @@ uint32_t it9517_add_pidfilter(uint8_t index,uint32_t value)
 	pthread_mutex_lock(&mux_thr);
 	error = IT9510_addPidToFilter(&eagle, index, pid);
 	pthread_mutex_unlock(&mux_thr);
-	if (error){ 
+	if (error){
 		printf("IT9510 controlPidFilter failed.\n");
 		goto exit;
 	}
 	else{
-		printf("IT9510 add pid successful.\n");	
+		printf("IT9510 add pid successful.\n");
 	}
-exit:				
+exit:
 	if (error)  printf("error=%x,%d\n",error,__LINE__);
 
 	return error;
@@ -475,14 +475,14 @@ uint32_t it9517_enable_tps_encryption(uint32_t key)
 	pthread_mutex_lock(&mux_thr);
 	error = IT9510_enableTpsEncryption(&eagle, key);
 	pthread_mutex_unlock(&mux_thr);
-	if (error){ 
+	if (error){
 		printf("IT9510 enableTpsEncryption failed.\n");
 		goto exit;
 	}
 	else{
-		printf("IT9510 enableTpsEncryption successful.\n");	
+		printf("IT9510 enableTpsEncryption successful.\n");
 	}
-exit:				
+exit:
 	if (error)  printf("error=%x,%d\n",error,__LINE__);
 
 	return error;
@@ -494,14 +494,14 @@ uint32_t it9517_disable_tps_encryption(void)
 	pthread_mutex_lock(&mux_thr);
 	error = IT9510_disableTpsEncryption(&eagle);
 	pthread_mutex_unlock(&mux_thr);
-	if (error){ 
+	if (error){
 		printf("IT9510 disableTpsEncryption failed.\n");
 		goto exit;
 	}
 	else{
-		printf("IT9510 disableTpsEncryption successful.\n");	
+		printf("IT9510 disableTpsEncryption successful.\n");
 	}
-exit:				
+exit:
 	if (error)  printf("error=%x,%d\n",error,__LINE__);
 
 	return error;
@@ -560,7 +560,7 @@ uint32_t it9517_aes_encryption(uint8_t *buf,uint8_t begin,Bool enable)
 		else
 			printf("IT9510 aesEncryptionEnable off.\n");
 	}
-exit:				
+exit:
 	if (error)  printf("error=%x,%d\n",error,__LINE__);
 
 	return error;
@@ -590,7 +590,7 @@ uint32_t it9517_pcr_restamp(PcrMode pcr_mode,uint8_t enable)
 		printf("IT9510 setPcrMode enable successful.\n");
 	}
 
-exit:				
+exit:
 	if (error)  printf("error=%x,%d\n",error,__LINE__);
 
 	return error;
@@ -614,7 +614,7 @@ uint32_t it9517_read_eeprom()
 		printf ("The value of 0x0001 is %2x", buffer[1]);
 		printf ("The value of 0x0002 is %2x", buffer[2]);
 	}
-exit:				
+exit:
 	if (error)  printf("error=%x,%d\n",error,__LINE__);
 
 	return error;
@@ -639,7 +639,7 @@ uint32_t it9517_write_eeprom()
 	}else{
 		printf("IT9510 writeEepromValues successful.\n");
 	}
-exit:				
+exit:
 	if (error)  printf("error=%x,%d\n",error,__LINE__);
 
 	return error;
@@ -652,7 +652,7 @@ uint32_t it9517_check_tsbuffer_overflow(void)
 	uint32_t error = ModulatorError_NO_ERROR;
 	Bool overflow;
 	pthread_mutex_lock(&mux_thr);
-	error = IT9510_isTsBufferOverflow (&eagle,&overflow);	
+	error = IT9510_isTsBufferOverflow (&eagle,&overflow);
 	pthread_mutex_unlock(&mux_thr);
 	if(error){
 		printf("IT9510 check tsbuffer overflow failed.\n");
@@ -664,7 +664,7 @@ uint32_t it9517_check_tsbuffer_overflow(void)
 		else
 			printf("it9517 tsbuffer is ok.\n");
 	}
-exit:				
+exit:
 	if (error)  printf("error=%x,%d\n",error,__LINE__);
 
 	return error;
@@ -676,7 +676,7 @@ uint32_t it9517_finalize(void)
 {
 	uint32_t error = ModulatorError_NO_ERROR;
 	pthread_mutex_lock(&mux_thr);
-	error = IT9510_finalize (&eagle);	
+	error = IT9510_finalize (&eagle);
 	pthread_mutex_unlock(&mux_thr);
 	if(error){
 		printf("IT9510_finalize failed.\n");
@@ -684,11 +684,96 @@ uint32_t it9517_finalize(void)
 	}else{
 		printf("IT9510_finalize successful.\n");
 	}
-exit:				
+exit:
 	if (error)  printf("error=%x,%d\n",error,__LINE__);
 	pthread_mutex_destroy(&mux_thr);
 	return error;
 
+}
+
+#include <libusb.h>
+#include "usb_tx.h"
+#include "timer.h"
+
+extern struct libusb_device_handle *devh;
+extern volatile bool ready_wait_for_mloop;
+extern pthread_mutex_t mux;
+extern volatile int do_exit ;
+extern unsigned char radio_tpacket[RADIO_USR_TX_LEN],
+												radio_rpacket[RADIO_USR_RX_LEN+RADIO_INFO_LEN];
+
+uint32_t it9517_video_channel_select() {
+	uint32_t i, error=ModulatorError_NO_ERROR;
+	short vch ;
+	long vif ;
+	puts("...... begin to wait for selected video channels ......");
+retry_vch_rec:
+	i = 0;
+	while ((1 == do_exit) &&
+				(RADIO_USR_RX_LEN != i)) {
+		short_sleep(0.1);
+		while(1 == do_exit) {
+			pthread_mutex_lock(&mux);
+			if (libusb_control_transfer(devh,
+					CTRL_IN,
+					USB_RQ,
+					RADIO_COMM_VAL,
+					RADIO_DATA_RX_IDX,
+					radio_rpacket,
+					sizeof(radio_rpacket),
+					0)){
+				pthread_mutex_unlock(&mux);
+				break;
+			}
+			pthread_mutex_unlock(&mux);
+			short_sleep(0.0005);
+		}
+		for(i=0;i<RADIO_USR_RX_LEN;i++) { // RADIO_USR_RX_LEN==RADIO_USR_TX_LEN! liyenho
+			if ( RADIO_USR_RX_LEN/2 != i &&
+				RADIO_USR_TX_LEN-i-1 != radio_rpacket[i])
+				break; // signature of vid ch sel packet
+		}
+	}
+	if (1!=do_exit ) {
+		ready_wait_for_mloop = True;
+		return error;
+	}
+	vch = radio_rpacket[RADIO_USR_RX_LEN/2];
+	if (vch >= NUM_OF_VID_CH) {
+		short_sleep(1);
+		goto retry_vch_rec;  // bad video ch idx
+	}
+#if 0  // disable acknowledge process, liyenho
+	// send video channel ack to Rx side
+	for(i=0;i<RADIO_USR_TX_LEN;i++) {
+		radio_tpacket[i]= \
+			RADIO_USR_TX_LEN-i-1; // signature of vid ch sel packet
+	}
+	radio_tpacket [RADIO_USR_TX_LEN/2] = True;
+	i = 0;
+	do {
+		pthread_mutex_lock(&mux);
+			libusb_control_transfer(devh,
+			 													CTRL_OUT,
+			 													USB_RQ,
+																RADIO_COMM_VAL,
+																RADIO_DATA_TX_IDX,
+																radio_tpacket,
+																RADIO_USR_TX_LEN,
+																0);
+		pthread_mutex_unlock(&mux);
+		usleep(CTRL_SEND_POLLPERIOD);
+	} while (100 > i++) ; // flood Rx with vch ack msg
+#endif
+	vif = (long)vch *VID_CH_TTL+VID_IF_CH_BASE;
+	printf("...... video channel IF = %d @ %d selected......\n", vif, vch);
+	error=it9517_acquire_channel(vif,VID_CH_BW);
+	if(error) return error;
+	error=it9517_adjust_output_gain(0/*-30*/);
+	if(error) return error;
+
+	error=it9517_enable_transmission_mode(1);
+	return error;
 }
 
 

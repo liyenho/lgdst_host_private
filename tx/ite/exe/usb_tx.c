@@ -1667,6 +1667,11 @@ printf("line # = %d\n", __LINE__);
 	channel_Modulation.transmissionMode=TransmissionMode_2K;
 	error=it9517_set_channel_modulation( channel_Modulation,2);
 	if(error)goto exit;
+#if /*true*/false   // dynamic video channel selection
+	if (it9517_video_channel_select())
+		goto exit ;
+	 gettimeofday(&end1,NULL);
+#else
 	//error=it9517_acquire_channel(/*809000*//*720000*/750000,6000); //avoid conflict with wifi, liyenho
 	error=it9517_acquire_channel(/*809000*/720000,6000);
 	if(error)goto exit;
@@ -1689,6 +1694,7 @@ printf("line # = %d\n", __LINE__);
 	error=it9517_enable_transmission_mode(1);
 	if(error)goto exit;
 	 //gettimeofday(&end1,NULL);
+#endif
 #endif
 	int32_t  msg[80]; // access buffer
 	//uint16_t *conv= (uint16_t*)acs->data;

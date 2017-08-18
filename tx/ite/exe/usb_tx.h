@@ -48,6 +48,7 @@ typedef int bool;
 #define USB_DEV_EP									2	// atmel CDC data ep 2 out
 #define EP_DATA										(USB_DEV_EP | LIBUSB_ENDPOINT_OUT)
 
+#define TEST										2	// synchronous file based block transfer
 #define ITERS										(FILE_LEN/FRAME_SIZE_A)
 #define FRAME_BUFFS									5
 #define TIMEOUT										1000		// audio time out @ 10 msec
@@ -68,7 +69,7 @@ typedef int bool;
 #define UDPIN_PORT 									5553
 #define UDPIN_MULTIADDR 							"127.0.0.1"
 
-#define LO_Frequency 								/*1583000*/ 1686000
+#define LO_Frequency 								/*1583000*/ 1693000
 	#define VID_CH_BW							6000
 	#define VID_CH_TTL							(VID_CH_BW+1000) // include guard band
 	#define MAX_VID_CH_F					2478000

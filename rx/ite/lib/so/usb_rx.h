@@ -116,7 +116,19 @@ typedef enum{
 #define EXTRA									16  	// randomly send more data on bulk pipe
 #define USB_ITE_FW_VAL							0x6
 #define ITE_FW_HDR_LEN							(4)
-#define LO_Frequency 							/*1583000*/ 1686000
+
+#define LO_Frequency 							/*1583000*/ 1693000
+	#define VID_CH_BW							6000
+	#define VID_CH_TTL							(VID_CH_BW+1000) // include guard band
+	#define MAX_VID_CH_F					2478000
+	#define MIN_VID_CH_F					2406000
+	#define NUM_OF_VID_CH			((MAX_VID_CH_F-MIN_VID_CH_F)/VID_CH_TTL)
+ #if NUM_OF_VID_CH < 3
+	#error Number of video channels cannot be less than 3
+ #endif
+	#define VID_IF_CH_BASE				(MIN_VID_CH_F-LO_Frequency)
+	#define VID_IF_CH_CEIL				VID_IF_CH_BASE+(NUM_OF_VID_CH-1)*VID_CH_TTL
+	#define VID_CH_STR_THR			-61	// translated to approximately 1 miles attenuation
 
 extern bool stream_on ; // ctrl xfer access speed flag, liyenho
 intmax_t get_file_size(const char* file_path);
