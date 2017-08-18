@@ -1307,7 +1307,7 @@ int receive(int usec, unsigned char *pb, uint32_t bytes) {
 	int err, recvsize;
 	udpin_tv.tv_sec = 0;
 	udpin_tv.tv_usec = usec;
-	while(UDP_PACKET_MAX>loc_buf_ptr) {
+	while(/*UDP_PACKET_MAX*/bytes>loc_buf_ptr) {
 		FD_ZERO(&udpin_fd);
 		FD_SET(udpin_socket,&udpin_fd);
 		err = select(udpin_socket+1,&udpin_fd,0,0,&udpin_tv);
@@ -1325,10 +1325,10 @@ int receive(int usec, unsigned char *pb, uint32_t bytes) {
 	}
 	pbf = (unsigned char*)net_loc_recv_buf;
 	memcpy(pb, pbf, bytes);
+	loc_buf_ptr -= bytes;
 	memmove(pbf,
 			pbf+bytes,
-			loc_buf_ptr- bytes);
-	loc_buf_ptr -= bytes;
+			loc_buf_ptr);
 	return 0;
 }
 
