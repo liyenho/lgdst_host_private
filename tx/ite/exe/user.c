@@ -138,6 +138,7 @@ uint32_t IT9510User_mpegConfig (
     return (ModulatorError_NO_ERROR);
 }
 
+static Bool from_x2 = False;  // True if called from busTx2/busRx2 api, liyenho
 
 uint32_t IT9510User_busTx (
       IT9510INFO*    modulator,
@@ -150,6 +151,7 @@ uint32_t IT9510User_busTx (
 	 uint32_t     error = ModulatorError_NO_ERROR;
 	int got_nack= 0, not_ready = 0, mis_align=0;
 	float wait = (stream_on)? 0.02 : 0.01;
+	if (True == from_x2) wait = 0.1;
 
 	 for (i = 0; i < IT9510User_MAXFRAMESIZE; i++)
 	 	{
@@ -211,10 +213,13 @@ uint32_t IT9510User_busTx2 (
       uint8_t*           buffer
 ) {
 #if 1
-		return IT9510User_busTx (
+		from_x2 = True;
+		uint32_t err= IT9510User_busTx (
 		      modulator,
 		      bufferLength,
 		      buffer	);
+		from_x2 = False;
+		return err;
 #else
 	 int32_t 		i, r, msg[80]; // access buffer
 	 dev_access *acs = (dev_access*)msg;
@@ -249,6 +254,7 @@ uint32_t IT9510User_busRx (
 	 uint32_t     error = ModulatorError_NO_ERROR;
 	int got_nack =0, not_ready = 0, mis_align=0;
 	float wait=(stream_on)?0.02:0.01;
+	if (True == from_x2) wait = 0.1;
 
 	 for (i = 0; i < IT9510User_MAXFRAMESIZE; i++)
 	 {
@@ -308,10 +314,13 @@ uint32_t IT9510User_busRx2 (
       uint8_t*           buffer
 ) {
 #if 1
-		return IT9510User_busRx (
+		from_x2 = True;
+		uint32_t err= IT9510User_busRx (
 		      modulator,
 		      bufferLength,
 		      buffer	);
+		from_x2 = False;
+		return err;
 #else
      int32_t	  i, r, msg[80]; // access buffer
      dev_access *acs = (dev_access*)msg;
