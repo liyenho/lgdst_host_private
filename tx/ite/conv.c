@@ -186,7 +186,7 @@ void conv_ts_w_ext_seq_cnt(unsigned char *opbf, uint32_t *obytes, unsigned char 
  			else if (0x10 == adpf) { // no adpf
  				check_payload_unit_start(4)
  				adpf = 0x30;  // attach adpf with private use, followed by ts
- 				tspkt[3] = adpf | tspkt[3]&0x0f;
+ 				tspkt[3] = adpf | (tspkt[3]&0x0f);
  				adfb[0] = (pus)?(6+3+1):(3+1);  // 2 byte for ext seq cnt + 1 byte of spec flags
  				adfb[1] = (pus)?0x92:0x82; // turn on private usage
  				adfb[2] = 2;
