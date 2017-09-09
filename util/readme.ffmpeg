@@ -1,0 +1,5 @@
+In order to build the ffmpeg video dec monitor,
+please checkout ffmpeg-2.6.-git folder and cd 
+into the downloaded location, simply run 
+./build_all.sh
+

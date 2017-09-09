@@ -1,0 +1,17 @@
+---- tsin_streamType Matches (3 in 2 files) ----
+Platform_it9517.c:129
+    tsin_streamType = stream_type;
+	//else if(wtemp == 1)
+	//	tsin_streamType = PARALLEL_TS_INPUT;
+	//else
+	//	tsin_streamType = SERIAL_TS_INPUT;
+
+	//start= GetTickCount();
+Platform_it9517.c:137
+	error = IT9510_initialize (&eagle, tsin_streamType, Bus_id, IT9510User_IIC_ADDRESS);
+    printf("error=%x,%d\n",error,__LINE__);
+	if (error) goto exit;
+Usb_tx.c:956
+TsInterface tsin_streamType = PARALLEL_TS_INPUT;
+static IQtable IQ_tableEx [65536];
+extern uint8_t InterfaceIndex_af9035u2i;

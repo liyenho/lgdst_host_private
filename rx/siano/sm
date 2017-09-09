@@ -1,0 +1,6 @@
+make clean
+make access_vid_rx
+make access_ctl_rx
+make lgdst_rx
+make demo_rx
+

@@ -1,0 +1,3 @@
+#default script to start client ------------
+ ./clientudptx 127.0.0.1 5559
+

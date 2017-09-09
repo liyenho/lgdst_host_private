@@ -1,0 +1,7 @@
+To build fstream in normal mode for 2.5 mb/s TS generation, please type
+
+   gcc -o fstream filestream.c -DUDPOUT_FILE_TS=\"your-ts-file-path\"
+
+To build fstream in dual stream mode for 2 mb/s TS generation, please type
+
+   gcc -o fstream filestream.c -DSLOW -DUDPOUT_FILE_TS=\"your-ts-file-path\"

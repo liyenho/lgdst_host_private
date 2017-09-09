@@ -1,0 +1,3 @@
+fpga_access.o: fpga_access.c /usr/local/include/libusb-1.0/libusb.h \
+ fpga_access.h ADRF6612_set.h
+timer.o: timer.c

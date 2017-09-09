@@ -1,0 +1,4 @@
+usb_tx.o: usb_tx.c /usr/local/include/libusb-1.0/libusb.h usb_tx.h \
+ radio_link_quality.h
+timer.o: timer.c
+radio_link_quality.o: radio_link_quality.c usb_tx.h radio_link_quality.h

@@ -1,0 +1,2 @@
+#default script to start usb_tx ------------------------
+sudo ./usb_tx 0 127.0.0.1 5559

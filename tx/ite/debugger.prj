@@ -1,0 +1,36 @@
+<project version="Crimson Editor 3.60">
+	<localfile path="\\VBOXSVR\Public\github\yuneec\lgdst_host\tx\ite\atm_logger.c" />
+	<localfile path="\\VBOXSVR\Public\github\yuneec\lgdst_module\tx\atmel\samg55\ite\proj-tx\src\video\inc\error.h" />
+	<localfile path="\\VBOXSVR\Public\github\yuneec\lgdst_module\tx\atmel\samg55\ite\proj-tx\src\video\it9510.c" />
+	<localfile path="\\VBOXSVR\Public\github\yuneec\lgdst_module\tx\atmel\samg55\ite\proj-tx\src\ite.c" />
+	<localfile path="\\VBOXSVR\Public\host\libusb-1.0-1.0.9~rc3\libusb\libusb.h" />
+	<localfile path="\\VBOXSVR\Public\github\yuneec\lgdst_module\tx\atmel\samg55\ite\proj-tx\src\main.c" />
+	<localfile path="\\VBOXSVR\Public\github\yuneec\lgdst_module\tx\atmel\samg55\ite\proj-tx\src\main.h" />
+	<localfile path="\\VBOXSVR\Public\github\yuneec\lgdst_host\tx\ite\misc.c" />
+	<localfile path="\\VBOXSVR\Public\github\yuneec\lgdst_module\tx\atmel\samg55\ite\proj-tx\src\video\orion_cal.c" />
+	<localfile path="\\VBOXSVR\Public\host\pipe_test.c" />
+	<localfile path="\\VBOXSVR\Public\github\yuneec\lgdst_module\tx\atmel\samg55\ite\proj-tx\src\video\tuner.c" />
+	<localfile path="\\VBOXSVR\Public\github\yuneec\lgdst_module\tx\atmel\samg55\ite\proj-tx\src\ASF\common\services\usb\class\cdc\device\udi_cdc_conf.h" />
+	<localfile path="\\VBOXSVR\Public\github\yuneec\lgdst_host\tx\ite\usb_tx.c" />
+	<localfile path="\\VBOXSVR\Public\github\yuneec\lgdst_host\tx\ite\usb_tx.h" />
+	<localfile path="\\VBOXSVR\Public\github\yuneec\lgdst_module\tx\atmel\samg55\ite\proj-tx\src\video\user.c" />
+</project>
+
+<workspace version="Crimson Editor 3.60">
+	<localfile path="\\VBOXSVR\Public\github\yuneec\lgdst_host\tx\ite\usb_tx.c" linenum="1311" placement="0:1:-1:-1:-8:-27:0:0:246:499" />
+	<localfile path="\\VBOXSVR\Public\github\yuneec\lgdst_host\tx\ite\usb_tx.h" linenum="21" placement="0:1:-1:-1:-8:-27:22:22:272:507" />
+	<localfile path="\\VBOXSVR\Public\github\yuneec\lgdst_host\tx\ite\misc.c" linenum="384" placement="2:3:-1:-1:-8:-27:44:44:294:529" />
+	<localfile path="\\VBOXSVR\Public\github\yuneec\lgdst_module\tx\atmel\samg55\ite\proj-tx\src\main.c" linenum="896" placement="0:1:-1:-1:-8:-27:66:66:316:551" />
+	<localfile path="\\VBOXSVR\Public\github\yuneec\lgdst_module\tx\atmel\samg55\ite\proj-tx\src\main.h" linenum="311" placement="0:1:-1:-1:-8:-27:88:88:338:573" />
+	<localfile path="\\VBOXSVR\Public\github\yuneec\lgdst_module\tx\atmel\samg55\ite\proj-tx\src\ite.c" linenum="261" placement="0:1:-1:-1:-8:-27:132:132:382:617" />
+	<localfile path="\\VBOXSVR\Public\github\yuneec\lgdst_module\tx\atmel\samg55\ite\proj-tx\src\video\it9510.c" linenum="4259" placement="0:1:-1:-1:-8:-27:220:220:470:705" />
+	<localfile path="\\VBOXSVR\Public\github\yuneec\lgdst_module\tx\atmel\samg55\ite\proj-tx\src\video\orion_cal.c" linenum="1655" placement="0:1:-1:-1:-8:-27:0:0:250:485" />
+	<localfile path="\\VBOXSVR\Public\github\yuneec\lgdst_module\tx\atmel\samg55\ite\proj-tx\src\video\tuner.c" linenum="396" placement="0:1:-1:-1:-8:-27:22:22:272:507" />
+	<localfile path="\\VBOXSVR\Public\github\yuneec\lgdst_module\tx\atmel\samg55\ite\proj-tx\src\video\user.c" linenum="254" placement="0:1:-1:-1:-8:-27:44:44:294:529" />
+	<localfile path="\\VBOXSVR\Public\github\yuneec\lgdst_module\tx\atmel\samg55\ite\proj-tx\src\video\inc\error.h" linenum="108" placement="0:1:-1:-1:-8:-27:132:132:382:617" />
+	<localfile path="\\VBOXSVR\Public\host\libusb-1.0-1.0.9~rc3\libusb\libusb.h" linenum="719" placement="0:1:-1:-1:-8:-27:132:132:382:617" />
+	<localfile path="\\VBOXSVR\Public\github\yuneec\lgdst_module\tx\atmel\samg55\ite\proj-tx\src\ASF\common\services\usb\class\cdc\device\udi_cdc_conf.h" linenum="111" placement="0:1:-1:-1:-8:-27:198:198:448:683" />
+	<localfile path="\\VBOXSVR\Public\github\yuneec\lgdst_host\tx\ite\atm_logger.c" linenum="96" placement="0:1:-1:-1:-8:-27:220:220:470:705" />
+	<localfile path="\\VBOXSVR\Public\host\pipe_test.c" linenum="79" placement="0:1:-1:-1:-8:-27:66:66:316:551" />
+</workspace>
+
