@@ -1,8 +1,0 @@
-sudo rm /usr/lib/liblgdst*
-sudo ln -s `pwd`/liblgdst_rx.so.1.0 /usr/lib/liblgdst_rx.so
-
-sudo rm /usr/lib/libaccess_ctl*
-sudo ln -s `pwd`/libaccess_ctl_rx.so.1.0 /usr/lib/libaccess_ctl_rx.so
-
-sudo rm /usr/lib/libaccess_vid*
-sudo ln -s `pwd`/libaccess_vid_rx.so.1.0 /usr/lib/libaccess_vid_rx.so
