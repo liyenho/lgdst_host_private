@@ -789,7 +789,7 @@ int tsptsadj(unsigned char* buff, int len, int pidid, int pcrid)
           ((tspkt[2]&0xff)==((pcrid)   &0xff))
       )  pcrhit =1;
     else pcrhit =0;
-    if((pcrhit==1)|| (pidhit==1)||(pusihit==1)) ;
+    if((pcrhit==1)|| (pidhit==1)||(pusihit==1))
       dbg_tsvidcnt++;
     //printf("hit:%d %d %d( %x %x %x %x)\n", pcrhit,pidhit,pusihit, tspkt[0],tspkt[1],tspkt[2],tspkt[3]);
 
