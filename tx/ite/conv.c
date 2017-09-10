@@ -13,11 +13,11 @@
  #define true						    1
  #define false							0
 // sampled from current ts (ts file used by fstream)
-  #define PID_VID										0x100
   //#define TP_CONV // converted ts sample file, liyenho
 
 #ifdef TP_CONV
 #define check_payload_unit_start(diff) \
+ 					assert(sizeof(buff_cnv) >=cnv_sz_p+188-(diff)); \
  					memcpy(buff_cnv+cnv_sz_p, tspkt+(diff), 188-(diff)); \
 					if (start) { \
 						tspkt[1] &= 0xbf; /*mask off p-u-s*/ \
@@ -31,8 +31,7 @@
 						cnv_st_p = cnv_sz_p; \
 						memcpy(pcr_pus,tspkt+6,sizeof(pcr_pus)); \
 					} \
- 					cnv_sz_p += 188-(diff); \
- 					assert(sizeof(buff_cnv) >=cnv_sz_p);
+ 					cnv_sz_p += 188-(diff);
 
 #define generate_extra_tp(size_aval) \
 		 			memcpy(extra_tp, \
@@ -237,9 +236,9 @@ void conv_ts_w_ext_seq_cnt(unsigned char *opbf, uint32_t *obytes, unsigned char 
 		 			if (188<(/*lusr*/3+((pus)?pcr_adj_sz:0)+adpfl+5)) {
 						; // all about stuffing bytes
 		 			}
-		 			else if ((adpfl-1)<(ofst+3+pcr_adj_sz)) {
-			 			lusr = (ofst+3+pcr_adj_sz-(adpfl-1))-(start)?6:0;  // 2 byte for ext seq cnt
-		 				ofst += pcr_adj_sz- (start)?6:0;
+		 			else if ((adpfl-1)<(ofst+3+((pus)?pcr_adj_sz:0))) {
+			 			lusr = (ofst+3+((pus)?pcr_adj_sz:0)-(adpfl-1));
+		 				ofst += ((pus)?pcr_adj_sz:0);
 		 				*(tspkt+4) += lusr;
 	 				}
 		 			{
@@ -288,6 +287,7 @@ void conv_ts_w_ext_seq_cnt(unsigned char *opbf, uint32_t *obytes, unsigned char 
 		 		}
 			 	//fflush(fdmp);
 		#undef check_payload_unit_start()
+		#undef generate_extra_tp()
 	#endif
 	}
  #endif
