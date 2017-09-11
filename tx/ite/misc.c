@@ -379,13 +379,13 @@ void *logging_poll(void *arg)
 	char *pb, *pb0;
 	pb = msg_buf + MAX_MSG_LEN;
 	while (1==do_exit) {
-		//pthread_mutex_lock(&mux_bulk);
+		pthread_mutex_lock(&mux_bulk);
 		r=libusb_bulk_transfer(devh,
 															EP_LOG,
 															pr, MAX_MSG_LEN-i,
 															&received,
 															2);
-		//pthread_mutex_unlock(&mux_bulk);
+		pthread_mutex_unlock(&mux_bulk);
 		if (0==r && 0!=received) {
 			pr += received;
 			i += received;

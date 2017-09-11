@@ -211,6 +211,9 @@ void at_exit(int status)
 		libusb_exit(NULL);
 	}
 	pthread_mutex_destroy(&mux);
+#ifdef UART_COMM
+	pthread_mutex_destroy(&mux_bulk);
+#endif
 	exit(status);
 }
 
@@ -228,11 +231,11 @@ int stream_block(unsigned char*pdata,int length)
 {
 	int r = 0, transferred;
 #ifdef UART_COMM
-	//pthread_mutex_lock(&mux_bulk);
+	pthread_mutex_lock(&mux_bulk);
 #endif
 	r=libusb_bulk_transfer(devh,EP_DATA,pdata,length,&transferred,30); // realtime recv no delay allowed
 #ifdef UART_COMM
-	//pthread_mutex_unlock(&mux_bulk);
+	pthread_mutex_unlock(&mux_bulk);
 #endif
 	if (r<0) { usleep(1000); return r; }
 	if (FRAME_SIZE_A!= transferred) {
@@ -864,6 +867,9 @@ init_device(int argc,char **argv)
 
 	do_exit = 1;
 	pthread_mutex_init(&mux, NULL);
+#ifdef UART_COMM
+	pthread_mutex_init(&mux_bulk, NULL);
+#endif
 	r = libusb_init(NULL);
 	if (r < 0)
 		perror_exit("failed to initialise libusb",1);
@@ -1032,6 +1038,9 @@ _fail:
 	libusb_close(devh);
 	libusb_exit(NULL);
 	pthread_mutex_destroy(&mux);
+#ifdef UART_COMM
+	pthread_mutex_destroy(&mux_bulk);
+#endif
 	return 0;
 
 
