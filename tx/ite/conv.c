@@ -238,7 +238,7 @@ void conv_ts_w_ext_seq_cnt(unsigned char *opbf, uint32_t *obytes, unsigned char 
 		 			}
 		 			else if ((adpfl-1)<(ofst+3+((pus)?pcr_adj_sz:0))) {
 			 			lusr = (ofst+3+((pus)?pcr_adj_sz:0)-(adpfl-1));
-		 				ofst += ((pus)?pcr_adj_sz:0);
+		 				ofst += ((pus)?pcr_adj_sz:0)+(6==ofst && !(0x10 & *(tspkt+5)))?-6:0;
 		 				*(tspkt+4) += lusr;
 	 				}
 		 			{
