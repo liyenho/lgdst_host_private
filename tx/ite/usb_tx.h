@@ -62,6 +62,7 @@ typedef int bool;
   	to be 1333.333 ts pkts, take 251920=1340*188 to accommodate 1880 blk */
  	#define ONE_SEC_WORTHY	251920  // liyenho
 #endif
+#define PID_VID										0x100
 #define FILE_NAME									"test.ts" /*"DVB_v2.ts"*/
 #ifndef TP_CONV
 	#define FILE_LEN									118440

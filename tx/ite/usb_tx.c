@@ -1376,7 +1376,7 @@ int main(int argc,char **argv)
 {
 	struct timeval start ,end1,end2;
 	unsigned long diff,diff1;
-	int i, r=0;
+	int i, n ,r=0;
 
 	gettimeofday(&start,NULL);
 	uint16_t bandwidth = 6000;
@@ -1505,53 +1505,74 @@ printf("line # = %d\n", __LINE__);
 		perror_exit("invalid socket read, bailed out...", -6);
 	tag += 1;
 #else  // assumed to deal with 2 mb/s ts, buffer approximate 1 sec worthy data
- 	const unsigned char *pte = vidbuf+2*ONE_SEC_WORTHY,
- 												*pte1 = pte +2*UDP_PACKET_MAX;
- 	unsigned char *pt = vidbuf, *pt1/*= pte*/,
- 									*ptb = /*audbuf*/pte1, //just in case ext blk comes
- 									*ptw = pte-2*188,
- 									*ptr = pte-ONE_SEC_WORTHY-188;
- 	int ts1_blk_cnt, dbflg1 ,
- 			ts_blk_sent =ONE_SEC_WORTHY/UDP_PACKET_MAX;
- 	bool stagger= false,
- 				// manage extra blk may be produced on consecutive slots
- 				ext_0 = false, ext_1 = false;
- 	i = 0;
+ 	/*const*/ unsigned char *pte = vidbuf+ONE_SEC_WORTHY,
+ 												*pte1 = pte +1*UDP_PACKET_MAX;
+ 	unsigned char *pt = vidbuf, *ptr, *ptw,
+ 										*out_ptr = audbuf+ (FRAME_BUFFS-1)*FRAME_SIZE_A,
+ 										*out_ptr_e = out_ptr+ FRAME_SIZE_A,
+ 										*out_ptr_b = out_ptr;
+ 	int ts1_blk_cnt, dbflg1;
+ 	i = n =0;
  	do {
 		if(0>receive(7520/*usec*/, pt, UDP_PACKET_MAX))
 			perror_exit("invalid socket read, bailed out...", -6);
 		dbflg1 = (double_buffer+1);
 		while (0>stream_block(pt,FRAME_SIZE_A)) ;
-		if (2==dbflg1)
+		if (2==dbflg1) {
 			while (0>stream_block(pt+FRAME_SIZE_A,FRAME_SIZE_A)) ;
-		pt += dbflg1* UDP_PACKET_MAX;
+		}
 		i += dbflg1;
+		pt += dbflg1* UDP_PACKET_MAX;
 		tag += dbflg1;
-			if (0 == tag%100)
-						printf("send a transport packet block,%d\n",tag);
+			if (n*100 < tag) {
+				printf("send a transport packet block,%d\n",tag);
+				n += 1;
+			}
  	} while (i <ONE_SEC_WORTHY/UDP_PACKET_MAX);
- 	memset(audbuf, 0xff, UDP_PACKET_MAX); // don't start yet
- 	double_buffer = false;
- 	ts1_blk_cnt = i;
-	// stagger the array storage for later retrieval
-	for (i=1; i<ONE_SEC_WORTHY/188; i++) {
-		memcpy(ptw, ptr, 188);
-		ptw -= 2*188;
-		ptr -= 188;
-	}
-	ptw = vidbuf+(true-stagger)*188 ;
-	ptr = vidbuf+(stagger)*188;
+ 	ts1_blk_cnt = i; // this shall be actual size of '1 sec' buffer! liyenho
+ 	pte = vidbuf + i*UDP_PACKET_MAX;
+ 	pte1 = pte + UDP_PACKET_MAX;
+	printf("pte = 0x%08x, pte1 = 0x%08x\n", pte, pte1);
+ 	ptr = vidbuf ;
+ 	ptw = ptr;
+ 	// for extra packet streaming
+ 	pt = audbuf+ 2*UDP_PACKET_MAX;
+	goto next_on;  // bypass ts sending, had done in the loop
 #endif
 	while (ITERS>=tag) {
 		if (1 != do_exit) break; // we can't fail here......
-		if ((0>stream_block(audbuf,FRAME_SIZE_A))
-	#ifdef TP_CONV
-			|| (double_buffer && 0>stream_block( \
-																	audbuf+FRAME_SIZE_A,FRAME_SIZE_A))
-	#endif
-		) {
+	#ifndef VIDEO_DUAL_BUFFER
+		if ((0>stream_block(audbuf,FRAME_SIZE_A)))
 			continue;
-		} else
+	#else  // this meant the dual streaming......
+		#define STREAM_BLKS \
+			memcpy(out_ptr, tspkt, 188); \
+			out_ptr += 188; \
+			if (out_ptr>=out_ptr_e) { \
+				while (0>stream_block(out_ptr_b,FRAME_SIZE_A)) ; \
+				out_ptr= out_ptr_b; \
+			}
+		#define STREAM_BLKS_CHK \
+			for (n=0; n<2*FRAME_SIZE_A/188; tspkt+=188, n++) { \
+				pid =( ((unsigned)(tspkt[1]&0x1f))<<8) + tspkt[2]; \
+				if ( PID_VID== pid) { \
+					STREAM_BLKS \
+				} \
+				else { \
+					/*retain non-video pid packets on odd (later stream) slot*/ \
+					if (1== (n&1)) { \
+						STREAM_BLKS \
+					} \
+				} \
+			}
+			unsigned char *tspkt = audbuf;
+			unsigned pid;
+			STREAM_BLKS_CHK
+			if (double_buffer) {
+				tspkt = audbuf + 2*FRAME_SIZE_A;
+				STREAM_BLKS_CHK
+			}
+	#endif
 		{
 			static int tpbprtcnt=0;
 			tpbprtcnt++;
@@ -1590,95 +1611,51 @@ printf("line # = %d\n", __LINE__);
 
      tag += 1;
  #else	// stagger the ts already in vidbuf with currently read
+next_on:
 	 if(0>receive(7520, pte1, UDP_PACKET_MAX)) // assumed 2 mb/s ts
 	  	perror_exit("invalid socket read, bailed out...", -6);
 	  dbflg1 = double_buffer+ 1;
+ #define	OUTPUT_BLKS \
+			  	for (i=0; i<(FRAME_SIZE_A/188); i++) { \
+			  		memcpy(po, pi0, 188); \
+			  		po += 188; \
+			  		pi0 += 188; \
+			  		memcpy(po, pi1, 188);  \
+			  		po += 188; \
+			  		pi1 += 188; \
+			  	} \
+			 tag += 1; \
+			ptr += FRAME_SIZE_A; \
+			if (ptr >= pte) { \
+				/*puts("read ptr wrapped around");*/ \
+				ptr = vidbuf; \
+			}
+ #define	TRANSFER_BLKS \
+			memcpy(ptw, pi0, FRAME_SIZE_A); \
+			ptw += FRAME_SIZE_A; \
+			if (ptw >= pte) { \
+				/*puts("write ptr wrapped around");*/ \
+				ptw = vidbuf; \
+			}
  		 {
- #define	OUTPUT_BLKS(numblk) \
-		  			if (false==stagger) { \
-			  			unsigned char *po = audbuf, \
-			  				/* reverse the order of each packet prior to copy in audbuf */ \
-			  											*pi0= ptr+188, \
-			  											*pi1= ptr; \
-			  			for (i=0; i<(numblk)*FRAME_SIZE_A/(2*188); i++) { \
-			  				memcpy(po, pi0, 188); \
-			  				po += 188; \
-			  				pi0 += 2*188; \
-			  				memcpy(po, pi1, 188); \
-			  				po += 188; \
-			  				pi1 += 2*188; \
-			  			}} \
-		  			else {/* no need of order reversal */ \
-		  				memcpy(audbuf, ptr, (numblk)*FRAME_SIZE_A); \
-	  				}
-   			if (ts1_blk_cnt>= ONE_SEC_WORTHY/UDP_PACKET_MAX) {
-	  			while (ts_blk_sent++< ONE_SEC_WORTHY/UDP_PACKET_MAX) {
-		  			OUTPUT_BLKS(1)
-		  			ptr +=  UDP_PACKET_MAX;
-		  			// flush ts buffer until 1 sec worthy data sent
-printf("vid dual str tst, line # = %d\n",__LINE__);
-		  			while (0>stream_block(audbuf,FRAME_SIZE_A)) ;
-     				tag += (1);
-					printf("send a transport packet block,%d\n",tag);
-	  			}
-	  			ts_blk_sent = 0;
-	  			// manage extra blk produced for next slot
-	  			if (ts1_blk_cnt> ONE_SEC_WORTHY/UDP_PACKET_MAX) {
-			  		ts1_blk_cnt = 1;
-		  			pt1 = pte;
-		  			if (false ==stagger) {
-printf("vid dual str tst, line # = %d\n",__LINE__);
-			  			pt = vidbuf+188;
-		  				ext_0 = true;
-	  				}
-		  			else {
-printf("vid dual str tst, line # = %d\n",__LINE__);
-			  			pt = vidbuf ;
-		  				ext_1 = true;
-	  				}
-	  			} else {
-		  			ts1_blk_cnt = 0;
-	  			}
-	  			ptw = vidbuf+(ts1_blk_cnt*FRAME_SIZE_A+true-stagger)*188 ;
-	  			stagger ^= true;  // sequence is crucial, don't modify
-				ptr = vidbuf ;
-  			}
-  			if (ts1_blk_cnt< ONE_SEC_WORTHY/UDP_PACKET_MAX) {
-  #define MOVE_EXT_BLK \
-				 		for (i=0; i<UDP_PACKET_MAX/188; i++) { \
-					 		memcpy(pt, pt1, 188); \
-					 		pt += 2*188; \
-					 		pt1 += 188; \
-				 		}
-	  			if (stagger) {
-		  			if (ext_0) {
-printf("vid dual str tst, line # = %d\n",__LINE__);
-				 		MOVE_EXT_BLK
-				 		ext_0 = false;
-	  				}
-	  			} else {
-		  			if (ext_1) {
-printf("vid dual str tst, line # = %d\n",__LINE__);
-				 		MOVE_EXT_BLK
-				 		ext_1 = false;
-	  				}
-	  			}
-  #undef MOVE_EXT_BLK
-		 		for (i=0; i< dbflg1*UDP_PACKET_MAX/188; i++) {
-			 		memcpy(ptw, ptb, 188);
-			 		ptw += 2*188;
-			 		ptb += 188;
-		 		}
- 				ts1_blk_cnt +=  dbflg1;
-	  			OUTPUT_BLKS( dbflg1)
-	  			ts_blk_sent  +=  dbflg1;
-//printf("ts1_blk_cnt = %d, ts_blk_sent = %d\n",ts1_blk_cnt ,ts_blk_sent);
- 				ptr +=  dbflg1*UDP_PACKET_MAX;
-		 		ptb = pte1;  // reset source ptr
-  			}
-  	#undef OUTPUT_BLKS
+			unsigned char *po = audbuf,
+				/* even slot in audbuf shall be of earlier stream, odd slot shall be of later stream */
+											*pi0= pte1,
+											*pi1= ptr;
+			OUTPUT_BLKS
+			pi0 = pte1 ;
+			TRANSFER_BLKS
+			if (1 < dbflg1) {
+			  	po = audbuf+2*FRAME_SIZE_A;
+			  	pi0= pte1+FRAME_SIZE_A;
+			  	pi1= ptr ;
+			  	OUTPUT_BLKS
+				pi0 = pte1+FRAME_SIZE_A;
+				TRANSFER_BLKS
+		  	}
  		}
-     tag +=  dbflg1;
+ #undef OUTPUT_BLKS
+ #undef TRANSFER_BLKS
  #endif
 
 		if (ITERS<=tag)
