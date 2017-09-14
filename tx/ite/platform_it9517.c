@@ -76,7 +76,7 @@ uint32_t it9517_initialize (uint8_t id_bus,TsInterface stream_type)
 	uint32_t chip_Type;
 	uint8_t Bus_id = Bus_USB;
 	TsInterface tsin_streamType = PARALLEL_TS_INPUT;
-
+	IT9510_reset(NULL); // reset ite before init? liyenho
 	Bus_id  =id_bus;
 	tsin_streamType = stream_type;
 	pthread_mutex_lock(&mux_thr);
