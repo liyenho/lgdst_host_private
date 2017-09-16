@@ -61,7 +61,11 @@
 					, thread_vid_rx = 0
 #endif
 					;
+#ifndef VIDEO_DUAL_BUFFER
   static uint8_t tsbuf[FRAME_SIZE_A];
+#else
+  static uint8_t tsbuf[SEQ_SCH_TOL*FRAME_SIZE_A];
+#endif
   static volatile int do_exit_m = 0;
   static int udpout_len;
   static int udpout_socket;
@@ -300,12 +304,13 @@ failed:
 #endif
   static void *vid_recv_rx(void *arg) {
 		udpout_init(UDPOUT_ADDR) ;
-      int r = FRAME_SIZE_A;
+      int blks, r = FRAME_SIZE_A;
 		while (1 != do_exit_m) {
-			lgdst_ts_rx(tsbuf);
+			lgdst_ts_rx(tsbuf, &blks);
       {
-	      int frag, sentsize;
+	      int n, frag, sentsize;
         unsigned char *pb = tsbuf;
+        for (n=0; n<blks; n++) {
 				for (frag=0; frag<5; frag++) {
 					sentsize=sendto(udpout_socket, pb, r/5,0,(struct sockaddr *)&udpout,
 	                  udpout_len);
@@ -316,6 +321,7 @@ failed:
 	        if (sentsize < 0) printf("send pack ERorr\n");
 	      		pb += r/5;
    		  }
+		  }
       }
 #ifdef VIDEO_STATS
 		stream_on = true;

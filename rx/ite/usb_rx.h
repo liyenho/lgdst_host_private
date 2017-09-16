@@ -28,6 +28,26 @@ typedef int bool;
 #define UDP_PACKET_MAX 							1880
 #define UDPOUT_PORT         					5558
 
+//#define VIDEO_DUAL_BUFFER		// accommodate dual stream protection scheme
+#ifdef VIDEO_DUAL_BUFFER
+	  /*376*8/(1500*10^-6) approximate 2 mb/s,
+  	to be 1333.333 ts pkts, take 251920=1340*188 to accommodate 1880 blk */
+ 	#define ONE_SEC_WORTHY	251920  // liyenho
+ 	#define SEQ_SCH_TOL					(10-1)
+ 	#define A_QUARTER_LESS		(3*ONE_SEC_WORTHY/4)
+ 	typedef struct {
+	 	uint8_t *vid_sch_buff,
+	 					*vid_sch_buff_e,
+	 					*vid_sch_ptr;
+		uint8_t *ptw_ts_b,
+						*ptw_ts_e,
+						*ptw_ts;
+		bool  sch_buff_full,
+					update_n;  // flag to tell whether if to upadte ext seq cnt next
+		int buf_flag,
+				ext_seq_cnt_n;
+ 	} ctx_dual_stream;
+#endif
 #define FRAME_SIZE_A							1880
 #define FRAME_SIZE_V							307200
 #define FRAME_SIZE_V2							(FRAME_SIZE_V*2)

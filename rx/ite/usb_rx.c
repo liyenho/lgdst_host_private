@@ -67,7 +67,9 @@ bool stream_on = false ; // ctrl xfer access speed flag, liyenho
 static FILE *file = NULL;
 unsigned char audbuf[FRAME_SIZE_A*FRAME_BUFFS]__attribute__((aligned(8)));
 unsigned char vidbuf[FRAME_SIZE_V2]__attribute__((aligned(8)));
-
+#ifdef VIDEO_DUAL_BUFFER
+	ctx_dual_stream dual_str_ctx = {0};
+#endif
 
 static bool detached = false;
 struct libusb_device_handle *devh = NULL;
@@ -87,7 +89,7 @@ const int pidpcr = 0x100;
 static struct timeval time_orig;    // as starting time ref
 uint32_t n, size, fw_info[3+1];
 
-const unsigned char nullts[188]={
+const unsigned char nullts_spec[188]={
 	0x47,0x1f,0xff,0x10,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,
 	0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,
 	0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,
@@ -99,7 +101,7 @@ const unsigned char nullts[188]={
 	0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,
 	0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,
 	0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,
-	0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff
+	0xff,0xff,0xff,0xff,0xf8,0xf9,0xfa,0xfb,0xfc,0xfd,0xfe,0xff
 };
 //DBG_USB_RX related ///////////////////////////////
 static int dbg_frmcnt=0;
@@ -774,7 +776,7 @@ int tsptsadj(unsigned char* buff, int len, int pidid, int pcrid)
     {
       frmbadflg=1;
       dbg_tseicnt += 1; // liyenho
-      memcpy(tspkt, nullts, sizeof(nullts));
+      memcpy(tspkt, nullts_spec, sizeof(nullts_spec));
     }
 	 dbg_tscnt += 1;  // liyenho
     if((tspkt[1]&0x40)==0x40) pusihit=1;
@@ -897,7 +899,7 @@ int tsptsadj(unsigned char* buff, int len, int pidid, int pcrid)
         }
   }
   if(frmbadflg==1)
-    memcpy(tspkt, nullts, sizeof(nullts));
+    memcpy(tspkt, nullts_spec, sizeof(nullts_spec));
   }//i
   return(pcrptscnt);
 }
@@ -1344,7 +1346,7 @@ int init_rf2072(void)
 
 }
 #ifdef LIB
-  void lgdst_ts_rx(uint8_t *tsbuf0)
+  void lgdst_ts_rx(uint8_t *tsbuf0, uint32_t *blks)
 #else
   int transfer_video(void)
 #endif
@@ -1388,30 +1390,252 @@ int init_rf2072(void)
 		llw >>= 16;
 		*((uint16_t*)audbuf+ii++) = ((0xff & llw)<<8) | (0xff & (llw>>8));
  	}
-
-		 tsptsadj(audbuf, FRAME_SIZE_A, pidvid, pidpcr);
 #ifndef LIB
 		if (ITERS==tag)
 			r = FILE_LEN - tag*FRAME_SIZE_A;
          else
 			r = FRAME_SIZE_A;
-
-
-		unsigned char *pb = audbuf;
-
-		for (frag=0; frag<5; frag++) {
-			sentsize=sendto(udpout_socket, pb, r/5,0,(struct sockaddr *)&udpout,udpout_len);
-	      if (sentsize < 0) printf("send pack ERorr\n");
-	      		pb += r/5;
+	#define SEND_VIA_UDP(buff) \
+	  unsigned char *pb = buff; \
+		for (frag=0; frag<5; frag++) { \
+			sentsize=sendto(udpout_socket, pb, r/5,0,(struct sockaddr *)&udpout,udpout_len); \
+	      if (sentsize < 0) printf("send pack ERorr\n"); \
+	      		pb += r/5; \
       		}
-
+#endif
+#ifndef VIDEO_DUAL_BUFFER
+	 tsptsadj(audbuf, FRAME_SIZE_A, pidvid, pidpcr);
+  #ifdef LIB
+	 *blks = 1;
+  #endif
+#ifndef LIB
+		SEND_VIA_UDP(audbuf)
 frm_inc:
 		tag += 1;
-
 		if (ITERS==tag)
 			tag = 0; // make it endless, liyenho
 #else  // in LIB mode
 		memcpy(tsbuf0, audbuf, FRAME_SIZE_A);
+#endif
+#else  // dual stream scheme
+	unsigned char *tspkt = audbuf;
+	unsigned  pid, n, nn;
+  #ifdef LIB
+	*blks = 0;
+  #endif
+ #if false
+	unsigned  char *cnt_seq_hi;  // use 6 bits
+	unsigned  char *cnt_seq_lo;  //use 8 bits
+	unsigned  ts_type;
+	static unsigned char cc_pmt=0;
+	static unsigned char  cc_pat=0;
+	static unsigned char  cc_vid = 0;
+	for (n=0; n<FRAME_SIZE_A/188; tspkt+=188, n++) {
+		ts_type =( tspkt[1] & 0x1f) >>2;
+		if(ts_type == 0) {pid = 0; tspkt[3]=(tspkt[3]&0xf0)| (cc_pat&0x0f); cc_pat++; }
+		else if(ts_type == 1){ pid = 0xfff; tspkt[3]=(tspkt[3]&0xf0)| (cc_pmt&0x0f); cc_pmt++; }
+		else if(ts_type ==2) { pid = 0x100; tspkt[3]=(tspkt[3]&0xf0)| (cc_vid&0x0f); cc_vid++; }
+		else {pid=0x1fff; tspkt[3]= tspkt[3]&0xf0; }
+
+		*cnt_seq_hi =(( tspkt[1]&0x3)<<4) |( tspkt[2]>>4);
+		*cnt_seq_lo =(tspkt[2]<<4) | (tspkt[3]&0x0f);
+//#define YENDO
+#ifdef YENDO
+		tspkt[1]=( tspkt[1]&0xe0)| (pid>>8);
+		tspkt[2]=pid&0xff;
+#endif
+	}
+ #endif
+  #define FILL_SEARCH_BUFF \
+					memcpy(dual_str_ctx.vid_sch_ptr, \
+									tspkt, 188); \
+					dual_str_ctx.vid_sch_ptr += 188; \
+					if (dual_str_ctx.vid_sch_ptr >= \
+						dual_str_ctx.vid_sch_buff_e) { \
+						dual_str_ctx.vid_sch_ptr =dual_str_ctx.vid_sch_buff; \
+						dual_str_ctx.sch_buff_full = true; \
+					}
+#ifdef LIB
+  #define INSERT_A_PKT(ptr_pkt) \
+						memcpy(dual_str_ctx.ptw_ts, ptr_pkt, 188); \
+						dual_str_ctx.ptw_ts += 188; \
+						if (dual_str_ctx.ptw_ts>= dual_str_ctx.ptw_ts_e) { \
+							dual_str_ctx.ptw_ts = dual_str_ctx.ptw_ts_b; \
+							if (1/*dual_str_ctx.sch_buff_full*/) { \
+								/*tsptsadj(dual_str_ctx.ptw_ts_b, \
+												FRAME_SIZE_A, pidvid, pidpcr);*/ \
+								memcpy(tsbuf0 + *blks *FRAME_SIZE_A, \
+												dual_str_ctx.ptw_ts_b, \
+												FRAME_SIZE_A); \
+								*blks += 1; \
+							} \
+						}
+#else  // not in lib mode
+  #define INSERT_A_PKT(ptr_pkt) \
+						memcpy(dual_str_ctx.ptw_ts, ptr_pkt, 188); \
+						dual_str_ctx.ptw_ts += 188; \
+						if (dual_str_ctx.ptw_ts>= dual_str_ctx.ptw_ts_e) { \
+							dual_str_ctx.ptw_ts = dual_str_ctx.ptw_ts_b; \
+							if (1/*dual_str_ctx.sch_buff_full*/) { \
+								/*tsptsadj(dual_str_ctx.ptw_ts_b, \
+												FRAME_SIZE_A, pidvid, pidpcr);*/ \
+								SEND_VIA_UDP(dual_str_ctx.ptw_ts_b) \
+							} \
+						}
+#endif
+ 	static int ext_seq_cnt0 =-1;
+	for (n=0; n<FRAME_SIZE_A/188; tspkt+=188, n++) {
+	  if((tspkt[1]&0x80)!=0x80) {
+		unsigned short ofst = 0, ext_seq_cnt, seq_del;
+		pid =( ((unsigned)(tspkt[1]&0x1f))<<8) + tspkt[2];
+		if (pidvid == pid) {
+			if ((0x30== (0x30&tspkt[3])) &&
+				(1+1+2 <= tspkt[4]) && (0x2== (0x2&tspkt[5]))) {
+				ofst += (0x10 & *(tspkt+5))?6:0;
+	 			ofst += (0x08 & *(tspkt+5))?6:0;
+	 			ofst += (0x04 & *(tspkt+5))?1:0;
+	 			if (2 == *(tspkt+6+ofst)) {// 2 byte ext seq cnt
+					*((uint8_t*)(&ext_seq_cnt)+1) = *(tspkt+7+ofst);
+					*((uint8_t*)(&ext_seq_cnt)+0) = *(tspkt+8+ofst);
+					if (0>(int)ext_seq_cnt0)
+						ext_seq_cnt0 = ext_seq_cnt;
+					else {
+						if (!dual_str_ctx.buf_flag) {
+							// determine the dual stream sequence
+							if (ext_seq_cnt0<ext_seq_cnt) {
+								seq_del = ext_seq_cnt- ext_seq_cnt0;
+								if (A_QUARTER_LESS/188<=seq_del) {
+									dual_str_ctx.buf_flag = 1; // next one is later
+									dual_str_ctx.ext_seq_cnt_n =
+										(ext_seq_cnt0 + 1) & 0xffff;
+								}
+								else {
+									if (1==seq_del) {
+										// within 1 sec startup phase, can't determine sequence yet
+										FILL_SEARCH_BUFF
+									}
+									else { // early stream wrapped
+										dual_str_ctx.buf_flag = -1; // current one is later
+										dual_str_ctx.ext_seq_cnt_n =
+											(ext_seq_cnt) & 0xffff;
+									}
+								}
+							}
+							else {
+								seq_del = ext_seq_cnt0- ext_seq_cnt;
+								if (A_QUARTER_LESS/188<=seq_del) {
+									dual_str_ctx.buf_flag = -1; // current one is later
+									dual_str_ctx.ext_seq_cnt_n =
+										(ext_seq_cnt) & 0xffff;
+								}
+								else {  // early stream wrapped
+									dual_str_ctx.buf_flag = 1; // next one is later
+									dual_str_ctx.ext_seq_cnt_n =
+										(ext_seq_cnt0 + 1) & 0xffff;
+								}
+							}
+						}
+						if (0<dual_str_ctx.buf_flag) {
+							if ((1==abs(ext_seq_cnt- ext_seq_cnt0)) &&
+								(dual_str_ctx.ext_seq_cnt_n==ext_seq_cnt)) {
+								goto reverse_late;
+							}
+reverse_early:
+							FILL_SEARCH_BUFF
+							if (dual_str_ctx.update_n)
+								dual_str_ctx.ext_seq_cnt_n =
+											(ext_seq_cnt0 + 1) & 0xffff;
+							dual_str_ctx.buf_flag = -1;
+						}
+						else if (0>dual_str_ctx.buf_flag) {
+							if ((1==abs(ext_seq_cnt- ext_seq_cnt0)) &&
+								(A_QUARTER_LESS/188<abs(ext_seq_cnt-dual_str_ctx.ext_seq_cnt_n))) {
+								dual_str_ctx.update_n = false;
+								goto reverse_early;
+							}
+reverse_late:
+							dual_str_ctx.update_n = true;
+							dual_str_ctx.buf_flag = 1;
+							// check upon ext seq cnt for pkt lost
+							if (dual_str_ctx.ext_seq_cnt_n!=ext_seq_cnt) {
+								uint8_t *pkt= dual_str_ctx.vid_sch_ptr+ 188;
+								unsigned short cnt_next = dual_str_ctx.ext_seq_cnt_n,
+																	exp_bn = cnt_next+SEQ_SCH_TOL ;
+	printf("missed expected ext seq cnt, exp = %d, real = %d (%d, %d)\n",
+				dual_str_ctx.ext_seq_cnt_n, ext_seq_cnt, ext_seq_cnt0, ext_seq_cnt)  ;
+								if (A_QUARTER_LESS/188<abs(ext_seq_cnt-cnt_next)) {
+									dual_str_ctx.buf_flag *= -1;
+									exp_bn = cnt_next;
+								}
+								do {
+									bool failed = true;
+									while(1) {
+										if (dual_str_ctx.vid_sch_buff_e ==pkt)
+											pkt = dual_str_ctx.vid_sch_buff;
+										unsigned short ofst1 = 0, ext_seq_cnt1;
+										ofst1 += (0x10 & *(pkt+5))?6:0;
+							 			ofst1 += (0x08 & *(pkt+5))?6:0;
+							 			ofst1 += (0x04 & *(pkt+5))?1:0;
+										*((uint8_t*)(&ext_seq_cnt1)+1) = *(pkt+7+ofst1);
+										*((uint8_t*)(&ext_seq_cnt1)+0) = *(pkt+8+ofst1);
+										if (cnt_next == ext_seq_cnt1) {
+											INSERT_A_PKT(pkt)
+											failed = false;
+											break;
+										}
+										if (dual_str_ctx.vid_sch_ptr == pkt)
+											break ;
+										pkt += 188;
+									}
+									cnt_next = (cnt_next+1) ;
+								} while (cnt_next != (exp_bn+1) &&
+												cnt_next != ext_seq_cnt);
+							}
+							INSERT_A_PKT(tspkt)
+							if (0<dual_str_ctx.buf_flag)
+								dual_str_ctx.ext_seq_cnt_n =
+											(ext_seq_cnt + 1) & 0xffff;
+							else  // sequence reversed
+								dual_str_ctx.ext_seq_cnt_n =
+											(ext_seq_cnt0 + 1) & 0xffff;
+						}
+						ext_seq_cnt0 = ext_seq_cnt; // keep tracking on ext seq cnt
+					}
+				}
+			}
+		}
+		else {
+			INSERT_A_PKT(tspkt)
+			if (0 !=dual_str_ctx.buf_flag) {
+				// in case ctrl radio pkt leaked toward video stream, ctrl radio pid : 0x1000
+				if (0x1000 ==pid)
+					goto skip;
+				// check for null pkt to tell whether if they're added in transmission or bit stream
+				if (0x1fff ==pid) {
+					for (nn=188-1; nn>180-1; nn--)
+						if (nullts_spec[nn] != tspkt[nn])
+							break;
+					if (180-1 != nn)
+						goto skip;
+				}
+#define _REALTIME_ // turn off if tested with file io
+#ifdef _REALTIME_
+	goto skip;  // not in file io, sequence order is speculated
+#endif
+				if (!dual_str_ctx.update_n)
+					goto skip;  //in special sequence...
+				if (0> dual_str_ctx.buf_flag) {
+					ext_seq_cnt0 =
+						(dual_str_ctx.ext_seq_cnt_n-1) & 0xffff;
+				}
+				else {
+					; // there shall be no effect at all,
+				}
+				dual_str_ctx.buf_flag *= -1;
+			}
+skip: 	;
+		}}
+	}
 #endif
 #ifndef LIB
 	}
@@ -1547,7 +1771,7 @@ int udpout_init(char* udpaddr)
 	error=it9137_init();
 	if(error)goto _exit;
 
-#if true/*false*/  // dynamic video channel scan
+#if /*true*/false  // dynamic video channel scan
 	if (it9137_video_channel_scan(False))
 		goto _exit;  // channel scan failed
 #else // normal routine
@@ -1623,6 +1847,19 @@ int32_t msg[80]; // access buffer
 	pthread_mutex_lock(&mux);
 	libusb_control_transfer(devh, CTRL_OUT, USB_RQ, 0x07, 0, NULL, 0, 0);
 	pthread_mutex_unlock(&mux);
+ #ifdef VIDEO_DUAL_BUFFER
+ 	// init video dual stream context
+	dual_str_ctx.vid_sch_buff = vidbuf;
+	dual_str_ctx.vid_sch_buff_e =vidbuf+ ONE_SEC_WORTHY;
+	dual_str_ctx.vid_sch_ptr = vidbuf;
+	dual_str_ctx.ptw_ts_b = audbuf+ (FRAME_BUFFS-1)*FRAME_SIZE_A;
+	dual_str_ctx.ptw_ts_e =dual_str_ctx.ptw_ts_b+FRAME_SIZE_A;
+	dual_str_ctx.ptw_ts =dual_str_ctx.ptw_ts_b;
+	dual_str_ctx.sch_buff_full = false;
+	dual_str_ctx.update_n = true;
+	dual_str_ctx.buf_flag = 0;  // invalidated
+	dual_str_ctx.ext_seq_cnt_n = -1;
+ #endif
 #endif
 _exit:
 	return error;

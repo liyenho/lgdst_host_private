@@ -8,7 +8,7 @@ void sigint_handler_rx(int signum);
 #if defined(PES_HDR_PROT) ||defined(PES_FRM_PROT) ||defined(PES_FRM_PROT1)
   void lgdst_ts_rx(uint8_t *tsbuf0, uint32_t *size);
 #else
-  void lgdst_ts_rx(uint8_t *tsbuf0);
+  void lgdst_ts_rx(uint8_t *tsbuf0, uint32_t *blks);
 #endif
 void lgdst_vid_stats_rx(long *, double *);  // poll video channel state, as well for sensitivity measure
 void lgdst_ctl_rec_rx(unsigned char *rpacket);
@@ -25,5 +25,9 @@ void lgdst_deinit_rx(int rcode);
 //bool lgdst_upgrade_rx(int argc, char **argv);  // return -1 when failed, liyenho
 
  #include "platform_it9137.h"
+  /*376*8/(1500*10^-6) approximate 2 mb/s,
+  	to be 1333.333 ts pkts, take 251920=1340*188 to accommodate 1880 blk */
+ 	#define ONE_SEC_WORTHY	251920  // liyenho
+	#define SEQ_SCH_TOL					10
 
 #endif  //LGDST_RX_H
