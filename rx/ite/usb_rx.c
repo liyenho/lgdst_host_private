@@ -1558,7 +1558,8 @@ reverse_late:
 							dual_str_ctx.buf_flag = 1;
 							// check upon ext seq cnt for pkt lost
 							if (dual_str_ctx.ext_seq_cnt_n!=ext_seq_cnt) {
-								uint8_t *pkt= dual_str_ctx.vid_sch_ptr+ 188;
+								uint8_t *pkt=(dual_str_ctx.sch_buff_full)? \
+									dual_str_ctx.vid_sch_ptr+ 188 :dual_str_ctx.vid_sch_buff ;
 								unsigned short cnt_next = dual_str_ctx.ext_seq_cnt_n,
 																	exp_bn = cnt_next+SEQ_SCH_TOL ;
 	printf("missed expected ext seq cnt, exp = %d, real = %d (%d, %d)\n",
