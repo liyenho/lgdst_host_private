@@ -1462,8 +1462,8 @@ frm_inc:
 						if (dual_str_ctx.ptw_ts>= dual_str_ctx.ptw_ts_e) { \
 							dual_str_ctx.ptw_ts = dual_str_ctx.ptw_ts_b; \
 							if (1/*dual_str_ctx.sch_buff_full*/) { \
-								/*tsptsadj(dual_str_ctx.ptw_ts_b, \
-												FRAME_SIZE_A, pidvid, pidpcr);*/ \
+								tsptsadj(dual_str_ctx.ptw_ts_b, \
+												FRAME_SIZE_A, pidvid, pidpcr); \
 								memcpy(tsbuf0 + *blks *FRAME_SIZE_A, \
 												dual_str_ctx.ptw_ts_b, \
 												FRAME_SIZE_A); \
@@ -1477,8 +1477,8 @@ frm_inc:
 						if (dual_str_ctx.ptw_ts>= dual_str_ctx.ptw_ts_e) { \
 							dual_str_ctx.ptw_ts = dual_str_ctx.ptw_ts_b; \
 							if (1/*dual_str_ctx.sch_buff_full*/) { \
-								/*tsptsadj(dual_str_ctx.ptw_ts_b, \
-												FRAME_SIZE_A, pidvid, pidpcr);*/ \
+								tsptsadj(dual_str_ctx.ptw_ts_b, \
+												FRAME_SIZE_A, pidvid, pidpcr); \
 								SEND_VIA_UDP(dual_str_ctx.ptw_ts_b) \
 							} \
 						}
