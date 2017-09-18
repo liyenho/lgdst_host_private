@@ -28,6 +28,6 @@ void lgdst_deinit_rx(int rcode);
   /*376*8/(1500*10^-6) approximate 2 mb/s,
   	to be 1333.333 ts pkts, take 251920=1340*188 to accommodate 1880 blk */
  	#define ONE_SEC_WORTHY	251920  // liyenho
-	#define SEQ_SCH_TOL					10
+	#define SEQ_SCH_TOL					100
 
 #endif  //LGDST_RX_H
