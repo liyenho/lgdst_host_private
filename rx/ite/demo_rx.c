@@ -334,7 +334,6 @@ failed:
 		uint8_t *pb, tpacket[/*RADIO_USR_TX_LEN*/1000] ;
 		int n, nn= 0;
 		while (1 != do_exit_m) {
-			lgdst_ctl_snd_rx(tpacket);
 #if false  // one can enable if he wants to exam the ctrl data link
 			pb = tpacket;
 			printf("sent ctrl msg\n\t");
@@ -344,6 +343,7 @@ failed:
 			}
 			puts("");
 #endif
+			lgdst_ctl_snd_rx(tpacket);
 			usleep(24000);	// simulate 10 kb/s rec CTRL data rate
 		}
 		return ;
