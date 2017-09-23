@@ -446,7 +446,7 @@ void *ctrl_poll_send(void *arg)
 			}
 		}
 		// ------------------------------------------------
-		if (sizeof(radio_tpacket) == rcvsize) {
+		if (ctrl_sckt_ok) {
 #ifndef UART_COMM
 			pthread_mutex_lock(&mux);
 			libusb_control_transfer(devh,CTRL_OUT, USB_RQ,RADIO_COMM_VAL,RADIO_DATA_TX_IDX,radio_tpacket, sizeof(radio_tpacket), 0);
