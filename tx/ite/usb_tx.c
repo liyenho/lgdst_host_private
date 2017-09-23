@@ -454,8 +454,6 @@ void *ctrl_poll_send(void *arg)
 
 			usleep(CTRL_SEND_POLLPERIOD);
 #else  //UART_COMM
-			uint8_t radio_tpacket1[RADIO_USR_TX_LEN+MAVLINK_HDR_LEN+CHKSUM_LEN];
-
 			uint8_t size = rand()%120;
 			uint8_t data[255] = {0};
 			for(int j=0;j<size;j++){
