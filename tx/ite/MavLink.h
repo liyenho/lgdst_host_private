@@ -18,10 +18,10 @@
 #define X25_INIT_CRC 								0xffff
 #define X25_VALIDATE_CRC 							0xf0b8
 
+#define MAVLINK_MAX_PAYLOAD_LEN				255
+#define MAX_MAVLINK_SIZE		(MAVLINK_HDR_LEN+MAVLINK_CHKSUM_LEN+MAVLINK_MAX_PAYLOAD_LEN)
+
 #define MAVLINK_USB_TRANSFER_LEN		(30+MAVLINK_HDR_LEN+MAVLINK_CHKSUM_LEN)
-
-
-
 
 typedef struct 
 {
@@ -31,18 +31,26 @@ typedef struct
 	uint8_t system_ID;
 	uint8_t component_ID;
 	uint8_t message_ID;
-	uint8_t data[255]; //actual occupied size determined by length parameter, 255 is max
+	uint8_t data[MAVLINK_MAX_PAYLOAD_LEN]; //actual occupied size determined by length parameter, 255 is max
 	uint8_t checksum[MAVLINK_CHKSUM_LEN];
 }MavLinkPacket;
 
+#define UART_STR_LEN	512  // for efficiency
 
-uint32_t Compute_Mavlink_Checksum(MavLinkPacket packet);
-bool Check_Mavlink_Checksum(MavLinkPacket packet);
-MavLinkPacket Build_Mavlink_Data_Packet(uint8_t num_bytes, uint8_t *data);
+typedef struct { // added by liyenho
+	uint32_t sts_next;
+	int32_t idx_wr;
+	int32_t idx_rd;
+	uint8_t pkt_buff[UART_STR_LEN];
+} stream_uart;
 
-bool Build_MavLink_from_Byte_Stream(MavLinkPacket * pkt, uint8_t next_byte);
+uint32_t Compute_Mavlink_Checksum(MavLinkPacket *packet);
+bool Check_Mavlink_Checksum(MavLinkPacket *packet);
+void Set_Mavlink_Checksum(uint8_t *packet) ; //added by liyenho
+void Build_Mavlink_Data_Packet(uint8_t *pkt, uint8_t num_bytes, uint8_t *data); // for efficiency & adequacy
+uint32_t MavLink_Total_Bytes_Used(MavLinkPacket *pkt);
 
-void PrintMavLink(MavLinkPacket pkt);
-
+bool Build_MavLink_from_Byte_Stream(uint8_t *pkt, bool *overrun, uint8_t *rdptr_str, unsigned len);
+void PrintMavLink(MavLinkPacket *pkt);
 
 #endif

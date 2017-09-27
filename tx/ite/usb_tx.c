@@ -38,7 +38,7 @@ char upgrade_fwm_path[160]; // upgrade firmware path
 int shmid_Lgdst = -1;
 ipcLgdst *shmLgdst_proc = 0;
 void*shm = NULL;
-volatile uint8_t main_loop_on = false; // run time indicator, liyenho
+volatile uint8_t main_loop_on = false; // run time indicator,
 volatile bool ready_wait_for_mloop= false;
 
 #ifdef RADIO_SI4463
@@ -276,7 +276,7 @@ void *ctrl_poll_recv(void *arg)
 {
 	int r, r1, i;
 	unsigned char validdataflag = 0;
-	long pv_wrbyte = 0,
+	long pv_wrbyte = 1, // changed to 1 for proper wait time
 	     /*for sensitivity meas*/
 	     pkt_cnt = 0;
 #ifdef UART_COMM
@@ -288,7 +288,6 @@ void *ctrl_poll_recv(void *arg)
 	// uart traffic convention (8N1) selected, also allowed tolerance on timing constraint,
 	// this field is most crucial setup!!! liyenho
 	uart_tv.tv_usec = 3/*1.5*/*(1000000 * 10 + 115200 - 1) / 115200 * sizeof(radio_rpacket1);
-
 #endif
 	while (1 == do_exit) {
 		bool failed_to_get, ctrl_sckt_ok = *(bool*)arg;
@@ -339,7 +338,7 @@ void *ctrl_poll_recv(void *arg)
 			}//end valid data
 			// user packet dataloss check
 
-			// process for control link sensitivity measurement, liyenho
+			// process for control link sensitivity measurement,
 			pkt_cnt += (validdataflag == 0x01);
 			if (get_sensitivity) {
 				int sigdbm ;
@@ -363,11 +362,10 @@ void *ctrl_poll_recv(void *arg)
 			fd_set uart_fd;
 			FD_ZERO(&uart_fd);
 			FD_SET(fd_uart, &uart_fd);
-			pthread_mutex_lock(&mux);
 
 			r = sizeof(radio_rpacket1);
 
-			bool complete = false;
+			bool complete = false, overrun;
 			uint8_t incoming_data[1000];
 
 			int err = select(fd_uart + 1, &uart_fd, 0, 0, &uart_tv1);
@@ -378,39 +376,39 @@ void *ctrl_poll_recv(void *arg)
 
 			}
 			if (FD_ISSET(fd_uart, &uart_fd)) {
-				// Ethernet input data processing
+				uint8_t socket_send_buffer[1000] ;
+				uint32_t socket_send_len ;
 
 				r1 = read (fd_uart, incoming_data, MAVLINK_USB_TRANSFER_LEN);
-				static MavLinkPacket newMav;
 				if (r1 > 0) {
-					for (int k = 0; k < r1; k++) {
-						complete = Build_MavLink_from_Byte_Stream(&newMav, incoming_data[k]);
+					pb = incoming_data+ sizeof(incoming_data)/2;  // mav pkt out buffer ptr,
+					complete= Build_MavLink_from_Byte_Stream(pb, &overrun, incoming_data, r1);
 						if (complete) {
-							if (newMav.data[0] != 0xe5) {
-								printf("Serial Rx: ");
-								PrintMavLink(newMav);
-								printf("Checksum %s", (Compute_Mavlink_Checksum(newMav) == *(uint16_t *)newMav.checksum) ? "OK" : "Error");
+							printf("Serial Rx: %s ", (overrun)?"buffer overrun":"\0");
+							PrintMavLink((MavLinkPacket*)pb);
+							Set_Mavlink_Checksum(pb) ; //write chksm into right place
+							printf("Checksum %s",
+								(Compute_Mavlink_Checksum((MavLinkPacket*)pb) == \
+								*(uint16_t *)((MavLinkPacket*)pb)->checksum) ? "OK" : "Error");
 								printf("\n\n");
-								uint8_t socket_send_buffer[1000] = {0};
-								MavLink_PackData(newMav, socket_send_buffer);
-								uint32_t socket_send_len = newMav.length + MAVLINK_HDR_LEN + MAVLINK_CHKSUM_LEN;
+						socket_send_len = MAVLINK_HDR_LEN+((MavLinkPacket*)pb)->length+MAVLINK_CHKSUM_LEN;
+						memcpy(socket_send_buffer, pb /*pkt start here*/, socket_send_len);
 								pv_wrbyte = sendto(ctrlrcv_socket, socket_send_buffer, socket_send_len, 0, (struct sockaddr *)&ctrlrcv, sizeof(ctrlrcv));
-								//erase any information to be safe
-								memset(&newMav, 0x0, sizeof(newMav));
-							}
-						}
 					}
 				}
 
 				r -= r1;
-				pb += r1;
 			}
 
-			pthread_mutex_unlock(&mux);
 #endif
 
-
+			#ifndef UART_COMM
 			usleep(CTRL_RECV_POLLPERIOD);
+			#else  // make data rate as close to maximum as possible
+			usleep(CTRL_RECV_POLLPERIOD*(pv_wrbyte+RADIO_USR_RX_LEN/2)/RADIO_USR_RX_LEN);
+			pv_wrbyte = 1;
+			#endif
+
 		} //ctrl_sckt_ok
 	}//(1==do_exit)
 }
@@ -426,7 +424,8 @@ void *ctrl_poll_send(void *arg)
 
 	while (1==do_exit) {
 
-		rcvsize = 0;
+		rcvsize = sizeof(radio_tpacket);
+#ifndef UART_COMM  // modified to clean up
 		{
 			static uint32_t echocnt=0;
 			int i;
@@ -437,14 +436,14 @@ void *ctrl_poll_send(void *arg)
 			radio_tpacket[4] = ((unsigned char *)&echocnt)[1];
 			radio_tpacket[5] = ((unsigned char *)&echocnt)[0];
 			echocnt++;
-			rcvsize = sizeof(radio_tpacket);
-			if(0) {
+			if(DEBUG_CTRLTX) {
 				printf("radio link Tx: ");
 				for(i=0;i<sizeof(radio_tpacket);i++)
 					printf("%02x ",radio_tpacket[i]);
 				printf("\n");
 			}
 		}
+#endif
 		// ------------------------------------------------
 		if (ctrl_sckt_ok) {
 #ifndef UART_COMM
@@ -454,30 +453,29 @@ void *ctrl_poll_send(void *arg)
 
 			usleep(CTRL_SEND_POLLPERIOD);
 #else  //UART_COMM
-			uint8_t size = rand()%120;
-			uint8_t data[255] = {0};
+			uint32_t size = rand() &255; // for thorought test, liyenho
+
+			uint8_t data[255] ;
 			for(int j=0;j<size;j++){
 				data[j]=j;
 			}
-			MavLinkPacket pkt = Build_Mavlink_Data_Packet(size, data);
-			/*printf("Radio Tx: ");
-			PrintMavLink(pkt);
-			printf("\n\n");*/
-			pthread_mutex_lock(&mux);
-
-
 			uint8_t pending[255+2+MAVLINK_HDR_LEN+1];
-			pending[0] = 0xAB;  //0xAB 0x55 is recognized by Atmel as start of MavLink
-			memcpy(pending+1, &pkt, pkt.length+MAVLINK_HDR_LEN);
-			memcpy(pending +1+pkt.length+MAVLINK_HDR_LEN, pkt.checksum, 2);
+			Build_Mavlink_Data_Packet(pending, size, data);
+			if(DEBUG_CTRLTX) {
+				printf("Radio Tx: ");
+				PrintMavLink(pending);
+				printf("\n\n");
+			}
 			write (fd_uart,
 					pending,
-					 pkt.length+MAVLINK_HDR_LEN+2+1);
-
-			pthread_mutex_unlock(&mux);
+					 size = ((MavLinkPacket*)pending)->length+MAVLINK_HDR_LEN+2);
 
 			//need different sleep param for Mav operation because Mav packets are different size
-			usleep(CTRL_SEND_MAV_POLLPERIOD);
+			#ifndef UART_COMM
+			usleep(CTRL_SEND_POLLPERIOD);
+			#else  // make data rate as close to maximum as possible
+			usleep(CTRL_SEND_POLLPERIOD*(size+RADIO_USR_TX_LEN/2)/RADIO_USR_TX_LEN);
+			#endif
 #endif
 		}
 
@@ -977,13 +975,14 @@ init_device(int argc,char **argv)
 					CTRL_IN, USB_RQ,
 					USB_STREAM_ON_VAL,
 					USB_QUERY_IDX,
-					&main_loop_on, sizeof(main_loop_on), 0);
+					&main_loop_on, sizeof(main_loop_on), 100);
 			//pthread_mutex_unlock(&mux);
 			if (!main_loop_on) {
 				short_sleep(1); 	// setup & settle in 1 sec
 			} else
 			break;
 		} while (1);
+		puts("observed atmel self init 0 finished");
  #endif
 #endif
 	// send system restart command...
@@ -1003,6 +1002,7 @@ init_device(int argc,char **argv)
 			} else
 			break;
 		} while (1);
+		puts("observed atmel self init 1 finished");
 	// bring up all others after main system restart command sent...
 	r = pthread_create(&poll_thread, NULL, poll_thread_main, NULL);
 	if (0 != r)
@@ -1388,7 +1388,7 @@ int main(int argc,char **argv)
 {
 	struct timeval start ,end1,end2;
 	unsigned long diff,diff1;
-	int i, n ,r=0;
+	int i, n, r=0;
 
 	gettimeofday(&start,NULL);
 	uint16_t bandwidth = 6000;
@@ -1466,7 +1466,7 @@ printf("line # = %d\n", __LINE__);
 		goto exit ;
 	 gettimeofday(&end1,NULL);
 #else
-	//error=it9517_acquire_channel(/*809000*//*720000*/750000,6000); //avoid conflict with wifi, liyenho
+	//error=it9517_acquire_channel(/*809000*//*720000*/750000,6000); //avoid conflict with wifi
 	error=it9517_acquire_channel(/*809000*//*777000*/699000,6000);
 	if(error)goto exit;
 	//error=it9517_get_output_gain();
@@ -1541,7 +1541,7 @@ printf("line # = %d\n", __LINE__);
 				n += 1;
 			}
  	} while (i <ONE_SEC_WORTHY/UDP_PACKET_MAX);
- 	ts1_blk_cnt = i; // this shall be actual size of '1 sec' buffer! liyenho
+ 	ts1_blk_cnt = i; // this shall be actual size of '1 sec' buffer!
  	pte = vidbuf + i*UDP_PACKET_MAX;
  	pte1 = pte + UDP_PACKET_MAX;
 	printf("pte = 0x%08x, pte1 = 0x%08x\n", pte, pte1);
@@ -1679,7 +1679,7 @@ next_on:
  #endif
 
 		if (ITERS<=tag)
-			tag = 0; // make it endless, liyenho
+			tag = 0; // make it endless,
 	}
      // return 0;
  exit:

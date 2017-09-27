@@ -56,13 +56,13 @@ typedef int bool;
 #define TIMEOUT										1000		// audio time out @ 10 msec
 #define UDP_PACKET_MAX 								1880
 //#define VIDEO_DUAL_BUFFER		// accommodate dual stream protection scheme
+#define PID_VID										0x100
 #ifdef VIDEO_DUAL_BUFFER
 	#define TP_CONV // converted ts  in real time
   /*376*8/(1500*10^-6) approximate 2 mb/s,
   	to be 1333.333 ts pkts, take 251920=1340*188 to accommodate 1880 blk */
- 	#define ONE_SEC_WORTHY	251920  // liyenho
+ 	#define ONE_SEC_WORTHY	251920
 #endif
-#define PID_VID										0x100
 #define FILE_NAME									"test.ts" /*"DVB_v2.ts"*/
 #ifndef TP_CONV
 	#define FILE_LEN									118440
@@ -159,8 +159,8 @@ typedef enum  {
 #ifdef  RADIO_SI4463
  //#define CTRL_RADIO_TEST
   #define RADIO_COMM_VAL						0x10  // using 5 bit out of 16 bit should be alright?
-  #define RADIO_SENS_VAL									0x11  // added for sensitivity measurement on control link, liyenho
-  #define RADIO_GET_RSSI_IDX							0x32  // for sensitivity measure on control link, liyenho
+  #define RADIO_SENS_VAL									0x11  // added for sensitivity measurement on control link,
+  #define RADIO_GET_RSSI_IDX							0x32  // for sensitivity measure on control link
   #define RADIO_STARTUP_IDX						0x2
   #define RADIO_DATA_TX_IDX 					0x3
   #define RADIO_DATA_RX_IDX						0x4
@@ -180,7 +180,7 @@ typedef enum  {
 #define USB_ITE_FW_VAL							0x6
 #define ITE_FW_HDR_LEN							(4)
 
-extern bool stream_on ; // ctrl xfer access speed flag, liyenho
+extern bool stream_on ; // ctrl xfer access speed flag
 intmax_t get_file_size(const char* file_path);
 void DieWithError(char *errorMessage);
 void at_exit(int status);

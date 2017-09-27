@@ -166,14 +166,15 @@ uint32_t IT9510User_busTx (
 			pthread_mutex_unlock(&mux);
 			short_sleep (wait); // NACK_RETRIES = 16
 
-         if (r < 0) continue ;
+         if (r != (sizeof(*acs)+(acs->dcnt-1)))
+         	continue ;
 
 			while(1) {
 		 		pthread_mutex_lock(&mux);
 			    acs->addr = IT951X_ADDRESS;
 			    acs->access = IT951X_WRITE;
 				  r = libusb_control_transfer(devh,CTRL_IN, USB_RQ,USB_HOST_MSG_RX_VAL,USB_HOST_MSG_IDX,
-							    (unsigned char*)acs, sizeof(*acs)-1/*byte*/, 50) ;
+							    (unsigned char*)acs, sizeof(*acs)-1/*byte*/, 0) ;
 						pthread_mutex_unlock(&mux);
 						if (r > 0) break;
 				short_sleep(0.0005);
@@ -315,7 +316,7 @@ uint32_t IT9510User_busRx2 (
 ) {
 #if 1
 		from_x2 = True;
-		uint32_t err =IT9510User_busRx (
+		uint32_t err= IT9510User_busRx (
 		      modulator,
 		      bufferLength,
 		      buffer	);
