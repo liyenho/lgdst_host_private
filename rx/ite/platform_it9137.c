@@ -673,7 +673,7 @@ retry7:
 															size,
 															0);
 		pthread_mutex_unlock(&mux);
-		usleep(10*CTRL_SEND_POLLPERIOD);
+		usleep(CTRL_SEND_POLLPERIOD);
 #else
 		pthread_mutex_lock(&mux);
 		 libusb_control_transfer(devh,
@@ -759,7 +759,7 @@ retry5:
 															      size,
 															      0);
 		      pthread_mutex_unlock(&mux);
-		      usleep(10*CTRL_SEND_POLLPERIOD);
+				usleep(CTRL_SEND_POLLPERIOD);
 #else
 					pthread_mutex_lock(&mux);
 					 libusb_control_transfer(devh,
