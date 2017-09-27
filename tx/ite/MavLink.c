@@ -66,7 +66,7 @@ uint32_t Compute_Mavlink_Checksum(MavLinkPacket *packet){
 static uint8_t sequence_cnt = 0;
 void Build_Mavlink_Data_Packet(uint8_t *pkt0, uint8_t num_bytes, uint8_t *data)
 {
-	
+
 	MavLinkPacket *pkt = (MavLinkPacket*)pkt0; // revised as below,
 	pkt->header = MAVLINK_START_SIGN;
 	pkt->length = num_bytes;
@@ -143,7 +143,7 @@ bool Build_MavLink_from_Byte_Stream(uint8_t *pkt, bool *overrun, uint8_t *rdptr_
 		*overrun = true;
 	}
 	// transfer to intr buffer from bit stream
-	if (UART_STR_LEN<len+idx_wr) {
+	if (UART_STR_LEN<=len+idx_wr) {
 		tlen0 = UART_STR_LEN-idx_wr;
 		memcpy (ctx_uart.pkt_buff+idx_wr,
 							rdptr_str, tlen0);
