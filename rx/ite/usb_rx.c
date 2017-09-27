@@ -1791,10 +1791,10 @@ int udpout_init(char* udpaddr)
 	error=it9137_init();
 	if(error)goto _exit;
 
-#if /*true*/false  // dynamic video channel scan
+#if DYNAMIC_VIDEO_CHANNEL_SCAN
 	if (it9137_video_channel_scan(False))
 		goto _exit;  // channel scan failed
-#else // normal routine
+#else // fixed frequency setting
   	bool istpslocked = true;
 	//error=it9137_get_firmwareversion();
 	//if(error)goto _exit;
