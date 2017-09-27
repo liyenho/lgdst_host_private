@@ -446,7 +446,7 @@ void *ctrl_poll_send(void *arg)
 			}
 		}
 		// ------------------------------------------------
-		if (sizeof(radio_tpacket) == rcvsize) {
+		if (ctrl_sckt_ok) {
 #ifndef UART_COMM
 			pthread_mutex_lock(&mux);
 			libusb_control_transfer(devh,CTRL_OUT, USB_RQ,RADIO_COMM_VAL,RADIO_DATA_TX_IDX,radio_tpacket, sizeof(radio_tpacket), 0);
@@ -454,8 +454,6 @@ void *ctrl_poll_send(void *arg)
 
 			usleep(CTRL_SEND_POLLPERIOD);
 #else  //UART_COMM
-			uint8_t radio_tpacket1[RADIO_USR_TX_LEN+MAVLINK_HDR_LEN+CHKSUM_LEN];
-
 			uint8_t size = rand()%120;
 			uint8_t data[255] = {0};
 			for(int j=0;j<size;j++){
