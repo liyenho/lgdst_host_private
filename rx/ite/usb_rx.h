@@ -10,10 +10,11 @@ typedef int bool;
 
 #define DBG_USB_CTRL_TX	0 // turn on/off ctrl tx debug print,
 #define DBG_USB_RX      1
+#define DYNAMIC_VIDEO_CHANNEL_SCAN   0
 #define RADIO_SI4463
 #define SHMKEY_TX 								1234	 //tx shared memory key for IPC between lgdst/core
 #define SHMKEY_RX 								5678	 //rx shared memory key for IPC between lgdst/core
-#define STC_HALF_RATE							(90000/2)  // divided by 2 because He'd want to keep stc value on even boundary
+#define STC_HALF_RATE							(90000/2)  // divided by 2 because keep stc value on even boundary
 
 #define CTRL_OUT								(LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_ENDPOINT_OUT)
 #define CTRL_IN									(LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_ENDPOINT_IN)
@@ -151,7 +152,6 @@ typedef enum{
 #define EXTRA									16  	// randomly send more data on bulk pipe
 #define USB_ITE_FW_VAL							0x6
 #define ITE_FW_HDR_LEN							(4)
-
 #define LO_Frequency 							/*1583000*/ 1693000
 	#define VID_CH_BW							6000
 	#define VID_CH_TTL							(VID_CH_BW+1000) // include guard band
