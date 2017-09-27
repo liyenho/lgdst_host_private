@@ -578,7 +578,7 @@ extern unsigned char radio_tpacket[RADIO_USR_TX_LEN],
 
 uint32_t it9137_video_channel_scan(Booll ran_once) {
 	puts("...... scanning available video channels ......");
-  static long vif, tif, chdbm[NUM_OF_VID_CH];
+  static long vif= -1, tif, chdbm[NUM_OF_VID_CH];
   	static short tch, chidx[NUM_OF_VID_CH];
   	static short vch = -1; /*invalid channel #*/
   	bool istpslocked;
