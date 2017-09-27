@@ -8,6 +8,7 @@ typedef int bool;
 #define true							1
 #define false							0
 
+#define DBG_USB_CTRL_TX	0 // turn on/off ctrl tx debug print,
 #define DBG_USB_RX      1
 #define RADIO_SI4463
 #define SHMKEY_TX 								1234	 //tx shared memory key for IPC between lgdst/core
@@ -32,7 +33,7 @@ typedef int bool;
 #ifdef VIDEO_DUAL_BUFFER
 	  /*376*8/(1500*10^-6) approximate 2 mb/s,
   	to be 1333.333 ts pkts, take 251920=1340*188 to accommodate 1880 blk */
- 	#define ONE_SEC_WORTHY	251920  // liyenho
+ 	#define ONE_SEC_WORTHY	251920
  	#define SEQ_SCH_TOL					(100-1)
  	#define A_QUARTER_LESS		(3*ONE_SEC_WORTHY/4)
  	typedef struct {
@@ -124,8 +125,15 @@ typedef enum{
 
 #ifdef  RADIO_SI4463
 
+#define MAVLINK_USB_LEN							263//(30+6+2)
+#define USE_MAVLINK								/*0*/ 1
+
 #define RADIO_COMM_VAL							0x10    // using 5 bit out of 16 bit should be alright?
 #define RADIO_STARTUP_IDX						0x2
+#if USE_MAVLINK
+  #define RADIO_MAVLEN_OUT_IDX				0x5
+  #define RADIO_MAVLEN_IN_IDX				0x6
+#endif
 #define RADIO_DATA_TX_IDX 						0x3
 #define RADIO_DATA_RX_IDX						0x4
 #define RADIO_USR_TX_LEN						30 		// ctl/sts radio payload byte length
@@ -135,9 +143,6 @@ typedef enum{
 #define CTRL_RECV_POLLPERIOD     				(24000/3) //us: must be > 2*CTRL_SEND_POLLPERIOD
 #define CTRL_SEND_FIFODEPTH  				 	8
 #define CTRL_RECV_FIFODEPTH  				 	8
-
-#define MAVLINK_USB_LEN							263//(30+6+2)
-#define USE_MAVLINK								/*0*/ 1
 
 #endif
 
@@ -160,7 +165,7 @@ typedef enum{
 	#define VID_IF_CH_CEIL				VID_IF_CH_BASE+(NUM_OF_VID_CH-1)*VID_CH_TTL
 	#define VID_CH_STR_THR			-61	// translated to approximately 1 miles attenuation
 
-extern bool stream_on ; // ctrl xfer access speed flag, liyenho
+extern bool stream_on ; // ctrl xfer access speed flag,
 intmax_t get_file_size(const char* file_path);
 void DieWithError(char *errorMessage) ;
 void at_exit(int status);

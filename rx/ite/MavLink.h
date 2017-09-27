@@ -19,7 +19,7 @@
 //checksum parameters
 #define X25_INIT_CRC 								0xffff
 #define X25_VALIDATE_CRC 							0xf0b8
-
+#undef bool
 typedef int bool;
 
 typedef struct 
@@ -34,10 +34,12 @@ typedef struct
 	uint8_t checksum[MAVLINK_CHKSUM_LEN];
 }MavLinkPacket;
 
-uint32_t MavLink_Total_Bytes_Used(MavLinkPacket pkt);
-uint32_t Compute_Mavlink_Checksum(MavLinkPacket packet);
-bool Check_Mavlink_Checksum(MavLinkPacket packet);
-uint32_t MavLink_PackData(MavLinkPacket pkt, uint8_t *buffer);
-MavLinkPacket Build_Mavlink_Data_Packet(uint8_t num_bytes, uint8_t *data);
-void PrintMavLink(MavLinkPacket pkt);
+#define MavLinkPacketSize			sizeof(MavLinkPacket) // added to accommodate revision
+
+uint32_t MavLink_Total_Bytes_Used(MavLinkPacket *pkt);
+uint32_t Compute_Mavlink_Checksum(MavLinkPacket *packet);
+void Set_Mavlink_Checksum(uint8_t *packet) ; //added by liyenho
+bool Check_Mavlink_Checksum(MavLinkPacket *packet);
+void Build_Mavlink_Data_Packet(uint8_t *pkt, uint8_t num_bytes, uint8_t *data); // for efficiency & adequacy
+void PrintMavLink(uint8_t *pkt);
 #endif /* MAVLINK_H_ */

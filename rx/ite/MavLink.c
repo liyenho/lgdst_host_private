@@ -48,58 +48,64 @@ static inline void crc_accumulate(uint8_t data, uint16_t *crcAccum)
 }
 
 
-uint32_t Compute_Mavlink_Checksum(MavLinkPacket packet){
+uint32_t Compute_Mavlink_Checksum(MavLinkPacket *packet){
 	
 	uint16_t checksum = X25_INIT_CRC;
 	//compute checksum, excluding packet start sign
-	for (int i =0; i< (packet.length+MAVLINK_HDR_LEN-1); i++){
-		crc_accumulate(*(uint8_t *)((&packet.length)+i), &checksum);
+	for (int i =0; i< (packet->length+MAVLINK_HDR_LEN-1); i++){
+		crc_accumulate(*(uint8_t *)((&packet->length)+i), &checksum);
 	}
 	//add CRC Extra per MavLink definition
-	crc_accumulate(MAVLINK_MESSAGE_CRCS[packet.message_ID], &checksum);
+	crc_accumulate(MAVLINK_MESSAGE_CRCS[packet->message_ID], &checksum);
 	return checksum;
 }
 
-
-bool Check_Mavlink_Checksum(MavLinkPacket packet){
-	return (Compute_Mavlink_Checksum(packet) == *(uint16_t *)packet.checksum);
+void Set_Mavlink_Checksum(uint8_t *packet){
+	int pk_len = ((MavLinkPacket*)packet)->length;
+	uint8_t *chk = packet+ MAVLINK_HDR_LEN+ pk_len;
+	*(packet+MAX_MAVLINK_SIZE-1) = *(chk+1);
+	*(packet+MAX_MAVLINK_SIZE-2) = *chk;
 }
 
-uint32_t MavLink_Total_Bytes_Used(MavLinkPacket pkt){
-	uint32_t bytes_used = MAVLINK_HDR_LEN + MAVLINK_CHKSUM_LEN + pkt.length;
+bool Check_Mavlink_Checksum(MavLinkPacket *packet){
+	return (Compute_Mavlink_Checksum(packet) == *(uint16_t *)packet->checksum);
+}
+
+uint32_t MavLink_Total_Bytes_Used(MavLinkPacket *pkt){
+	uint32_t bytes_used = MAVLINK_HDR_LEN + MAVLINK_CHKSUM_LEN + pkt->length;
 	return bytes_used;
 }
 
-
-uint32_t MavLink_PackData(MavLinkPacket pkt, uint8_t *buffer){
-	memcpy(buffer, &pkt, pkt.length+MAVLINK_HDR_LEN);
-	memcpy(buffer+pkt.length+MAVLINK_HDR_LEN, pkt.checksum, MAVLINK_CHKSUM_LEN);
-	return MavLink_Total_Bytes_Used(pkt);
-}
-
 static uint8_t sequence_cnt = 0;
-MavLinkPacket Build_Mavlink_Data_Packet(uint8_t num_bytes, uint8_t *data){
-	
-	MavLinkPacket pkt;
-	pkt.header = MAVLINK_START_SIGN;
-	pkt.length = num_bytes;
-	pkt.sequence = sequence_cnt++;
-	pkt.system_ID = 0xAB; //made up values for testing
-	pkt.component_ID = 0xCD; //made up values for testing
-	pkt.message_ID = MAVLINK_ID_DATA;
-	memcpy(pkt.data, data, num_bytes); //fill in packet payload
+void Build_Mavlink_Data_Packet(uint8_t *pkt0, uint8_t num_bytes, uint8_t *data)
+{
+	MavLinkPacket *pkt= (MavLinkPacket*)pkt0;  // completely revised as below
+	pkt->header = MAVLINK_START_SIGN;
+	pkt->length = num_bytes;
+	pkt->sequence = sequence_cnt++;
+	pkt->system_ID = 0xAB; //made up values for testing
+	pkt->component_ID = 0xCD; //made up values for testing
+	pkt->message_ID = MAVLINK_ID_DATA;
+	memcpy(pkt->data, data, num_bytes); //fill in packet payload
 
-	*(uint16_t *) pkt.checksum = (uint16_t) Compute_Mavlink_Checksum(pkt);
-
-	return pkt;
+	uint16_t chksm = Compute_Mavlink_Checksum(pkt);
+	uint8_t lo=0, *pcs = (uint8_t*)&chksm,
+					*pkt1 = ((uint8_t*)pkt+num_bytes+MAVLINK_HDR_LEN);
+	do {	// in place of memcpy for efficiency,
+		*((uint8_t*)pkt1+lo) = *pcs++;
+	} while(++lo < MAVLINK_CHKSUM_LEN);
 }
 
-void PrintMavLink(MavLinkPacket pkt){
-	for (int i=0; i<(pkt.length+MAVLINK_HDR_LEN); i++){
-		printf("%02x ", *(uint8_t*)(&(pkt.header)+i) );
+void PrintMavLink(uint8_t *pkt0)
+{
+	int i0, i ;
+	MavLinkPacket *pkt= (MavLinkPacket*)pkt0;  // completely revised as below
+	for (i=0; i<(pkt->length+MAVLINK_HDR_LEN); i++){
+		printf("%02x ", *(uint8_t*)(pkt0+i) );
 	}
-	for (int i=0; i<MAVLINK_CHKSUM_LEN; i++){
-		printf("%02x ", pkt.checksum[i]);
+	i0 = i;
+	for (; i<i0+MAVLINK_CHKSUM_LEN; i++){
+		printf("%02x ", *(uint8_t*)(pkt0+i));
 	}
 
 }

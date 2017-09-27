@@ -146,7 +146,7 @@ uint32_t it9137_scan_channel(uint8_t chip,
 
 			printf("frequency=%d,bandwidth=%d\n",frequency,bandwidth);
 		}
-		usleep(/*400000*/250000); // is this magic # to wait for stable signal strength? liyenho
+		usleep(/*400000*/250000); // is this magic # to wait for stable signal strength?
 		pthread_mutex_lock(&mux_thr);
 		error=Demodulator_getSignalStrengthDbm(&it9130, chip, strengthdbm);
 		pthread_mutex_unlock(&mux_thr);
@@ -583,7 +583,7 @@ uint32_t it9137_video_channel_scan(Booll ran_once) {
   	static short vch = -1; /*invalid channel #*/
   	bool istpslocked;
   uint32_t error;
-  	int i, ch, ch1;
+  	int i, ch, ch1, size;
 	if (!ran_once) {
 	  	for (ch=0; ch<NUM_OF_VID_CH; ch++)
 	  		chidx[ch] = ch;	// setup ch in sequential order at start
@@ -656,14 +656,14 @@ retry7:
 	radio_tpacket [RADIO_USR_TX_LEN/2] =vch;
 	i = 0;
 #if USE_MAVLINK
-  MavLinkPacket pkt = Build_Mavlink_Data_Packet(RADIO_USR_TX_LEN, radio_tpacket);
-	uint8_t pending[255+2+MAVLINK_HDR_LEN];
-	memcpy(pending, &pkt, pkt.length+MAVLINK_HDR_LEN);
-	memcpy(pending +pkt.length+MAVLINK_HDR_LEN, pkt.checksum, 2);
+	uint8_t pending[255+2+MAVLINK_HDR_LEN]; // mavlink arch for efficiency
+   Build_Mavlink_Data_Packet(pending, RADIO_USR_TX_LEN, radio_tpacket);
 #endif
 	do {
 #if USE_MAVLINK
+		size = MAVLINK_HDR_LEN +((MavLinkPacket*)pending)->length+ MAVLINK_CHKSUM_LEN; // accommodate mavlink var msg len,
 		pthread_mutex_lock(&mux);
+		 libusb_control_transfer(devh,CTRL_OUT, USB_RQ,RADIO_COMM_VAL,RADIO_MAVLEN_OUT_IDX,&size, 2, 0);
 		 libusb_control_transfer(devh,
 		 													CTRL_OUT,
 		 													USB_RQ,
@@ -725,7 +725,7 @@ retry5:
 				pthread_mutex_unlock(&mux);
 				short_sleep(0.0005);
 			}
-			for(i=0;i<RADIO_USR_RX_LEN;i++) { // RADIO_USR_RX_LEN==RADIO_USR_TX_LEN! liyenho
+			for(i=0;i<RADIO_USR_RX_LEN;i++) { // RADIO_USR_RX_LEN==RADIO_USR_TX_LEN
 				if ( RADIO_USR_RX_LEN/2 != i &&
 					RADIO_USR_TX_LEN-i-1 != radio_rpacket[i])
 					break; // signature of vid ch ack packet
@@ -749,6 +749,7 @@ retry5:
 				do {
 #if USE_MAVLINK
 		      pthread_mutex_lock(&mux);
+		 		libusb_control_transfer(devh,CTRL_OUT, USB_RQ,RADIO_COMM_VAL,RADIO_MAVLEN_OUT_IDX,&size, 2, 0);
 		       libusb_control_transfer(devh,
 		       													CTRL_OUT,
 		       													USB_RQ,

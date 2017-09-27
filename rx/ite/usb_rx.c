@@ -48,7 +48,8 @@ socklen_t ctrlsnd_len;
 struct sockaddr_in ctrlsnd, ctrlrcv; //clnt;
 
 #if USE_MAVLINK
-unsigned char radio_tpacket[RADIO_USR_TX_LEN]__attribute__((aligned(8)));
+unsigned char radio_tpacket[RADIO_USR_TX_LEN]__attribute__((aligned(8))); //still used in video chan select
+volatile uint8_t pending[255+2+MAVLINK_HDR_LEN]; // for efficiency
 unsigned char radio_rpacket[MAVLINK_USB_LEN]__attribute__((aligned(8)));
 #else
 unsigned char radio_tpacket[RADIO_USR_TX_LEN]__attribute__((aligned(8)));
@@ -62,7 +63,7 @@ int  udpout_socket;
 fd_set udpin_fd;
 struct sockaddr_in udpout;
 
-bool stream_on = false ; // ctrl xfer access speed flag, liyenho
+bool stream_on = false ; // ctrl xfer access speed flag
 
 static FILE *file = NULL;
 unsigned char audbuf[FRAME_SIZE_A*FRAME_BUFFS]__attribute__((aligned(8)));
@@ -268,7 +269,12 @@ void *ctrl_poll_recv(void *arg)
 		bool ctrl_sckt_ok = *(bool*)arg;
 		if (ctrl_sckt_ok) {
 			pthread_mutex_lock(&mux);
+#if USE_MAVLINK
+			libusb_control_transfer(devh, CTRL_IN, USB_RQ, RADIO_COMM_VAL, RADIO_MAVLEN_IN_IDX, &pv_wrbyte, 2, 0);
+			libusb_control_transfer(devh, CTRL_IN, USB_RQ, RADIO_COMM_VAL, RADIO_DATA_RX_IDX, radio_rpacket, pv_wrbyte, 0);
+#else
 			libusb_control_transfer(devh, CTRL_IN, USB_RQ, RADIO_COMM_VAL, RADIO_DATA_RX_IDX, radio_rpacket, sizeof(radio_rpacket), 0);
+#endif
 			pthread_mutex_unlock(&mux);
 
 			bool filler_flag = ((radio_rpacket[0]==0xee) && (radio_rpacket[1]==0xee));
@@ -299,21 +305,20 @@ void *ctrl_poll_recv(void *arg)
 
 #if USE_MAVLINK
 			if (!filler_flag) {
-				MavLinkPacket recvMav;
-				memcpy(&recvMav, radio_rpacket, MAVLINK_USB_LEN);
+				memcpy(socket_send_buffer, radio_rpacket, pv_wrbyte); // straight memcpy entire pkt
 				printf("Radio Rx: ");
-				PrintMavLink(recvMav);
-				uint16_t expec_chksum = Compute_Mavlink_Checksum(recvMav);
-				bool checksum_ok = Check_Mavlink_Checksum(recvMav);
+				PrintMavLink(socket_send_buffer);
+				Set_Mavlink_Checksum(socket_send_buffer) ; //write chksm into right place
+				uint16_t expec_chksum = Compute_Mavlink_Checksum((MavLinkPacket*)socket_send_buffer);
+				bool checksum_ok = Check_Mavlink_Checksum((MavLinkPacket*)socket_send_buffer);
 				printf(" Checksum %s", checksum_ok ? "OK" : "Error");
 				if (!checksum_ok) {
 					printf("\t Expected %x", expec_chksum);
 				}
 				printf("\n\n");
 
-				//prepare for socket send
-				MavLink_PackData(recvMav, socket_send_buffer);
-				socket_send_len = recvMav.length+MAVLINK_HDR_LEN+MAVLINK_CHKSUM_LEN;
+				//prepare for socket send,
+				socket_send_len = ((MavLinkPacket*)socket_send_buffer)->length+MAVLINK_HDR_LEN+MAVLINK_CHKSUM_LEN;
 			}
 
 #else
@@ -365,10 +370,14 @@ void *ctrl_poll_recv(void *arg)
 
 			if (validdataflag) //got valid payload
 			{
-				pv_wrbyte = sendto(ctrlrcv_socket, socket_send_buffer, socket_send_len, 0, (struct sockaddr *)&ctrlrcv, sizeof(ctrlrcv));
+				sendto(ctrlrcv_socket, socket_send_buffer, socket_send_len, 0, (struct sockaddr *)&ctrlrcv, sizeof(ctrlrcv));
 			}
 
+			#if !(USE_MAVLINK)
 			usleep(CTRL_RECV_POLLPERIOD);
+			#else  // make data rate as close to maximum as possible
+			usleep(CTRL_RECV_POLLPERIOD*(pv_wrbyte+RADIO_USR_RX_LEN/2)/RADIO_USR_RX_LEN);
+			#endif
 		} //ctrl_sckt_ok
 	}//(1==do_exit)
 }
@@ -376,9 +385,11 @@ void *ctrl_poll_recv(void *arg)
 void lgdst_ctl_rec_rx(unsigned char *rpacket)
  {
 	if (rpacket) {
+		#if !(USE_MAVLINK)
 		// rpacket buffer must be at least the same length:RADIO_USR_RX_LEN+RADIO_INFO_LEN
 		// user should always check for buffer information (RADIO_INFO_LEN) in regards to access status
 		memcpy(rpacket, radio_rpacket, sizeof(radio_rpacket));
+		#endif
 	}
  }
 #endif
@@ -391,7 +402,7 @@ void *ctrl_poll_send(void *arg)
 	srand(time(NULL));
 
 	while (1==do_exit) {
-
+		#if !(USE_MAVLINK)
 		{
 			static uint32_t echocnt=0;
 			int i;
@@ -402,49 +413,57 @@ void *ctrl_poll_send(void *arg)
 			radio_tpacket[4] = ((unsigned char *)&echocnt)[1];
 			radio_tpacket[5] = ((unsigned char *)&echocnt)[0];
 			echocnt++;
-			if(0) {
+			if(DBG_USB_CTRL_TX) { // turn on/off ctrl tx debug print
 				printf("radio link Tx: ");
 				for(i=0;i<sizeof(radio_tpacket);i++)
 					printf("%02x ",radio_tpacket[i]);
 				printf("\n");
 			}
 		}
+		#endif
 		#if USE_MAVLINK
-		uint8_t data[255] ={0};
+		uint8_t data[255] ;
 		for (int j=0;j<255;j++){
 			data[j] = j;
 		}
 
-		uint32_t size = rand()%120;
-		MavLinkPacket pkt = Build_Mavlink_Data_Packet(size, data);
-		uint8_t pending[255+2+MAVLINK_HDR_LEN];
-		memcpy(pending, &pkt, pkt.length+MAVLINK_HDR_LEN);
-		memcpy(pending +pkt.length+MAVLINK_HDR_LEN, pkt.checksum, 2);
-		/*printf("Radio Tx: ");
-		PrintMavLink(pkt);
-		printf("\n");*/
+		uint32_t mav_size = rand() &255;
+		Build_Mavlink_Data_Packet(pending, mav_size, data);
+
+		if (DBG_USB_CTRL_TX) { // turn on/off ctrl tx debug print
+			printf("Radio Tx: ");
+			PrintMavLink(pending);
+			printf("\n");
+		}
 		#endif
 
 		// ------------------------------------------------
 
 		pthread_mutex_lock(&mux);
 		#if USE_MAVLINK
-			libusb_control_transfer(devh,CTRL_OUT, USB_RQ,RADIO_COMM_VAL,RADIO_DATA_TX_IDX,pending, MAVLINK_USB_LEN, 0);
+			mav_size = MAVLINK_HDR_LEN +((MavLinkPacket*)pending)->length+ MAVLINK_CHKSUM_LEN; // accommodate mavlink var msg len,
+			libusb_control_transfer(devh,CTRL_OUT, USB_RQ,RADIO_COMM_VAL,RADIO_MAVLEN_OUT_IDX,&mav_size, 2, 0);
+			libusb_control_transfer(devh,CTRL_OUT, USB_RQ,RADIO_COMM_VAL,RADIO_DATA_TX_IDX,pending, mav_size, 0);
 		#else
 			libusb_control_transfer(devh,CTRL_OUT, USB_RQ,RADIO_COMM_VAL,RADIO_DATA_TX_IDX,radio_tpacket, sizeof(radio_tpacket), 0);
 		#endif
 		pthread_mutex_unlock(&mux);
 
-
-		usleep(10*CTRL_SEND_POLLPERIOD);
+		#if !(USE_MAVLINK)
+		usleep(CTRL_SEND_POLLPERIOD);
+		#else  // make data rate as close to maximum as possible
+		usleep(CTRL_SEND_POLLPERIOD*(mav_size+RADIO_USR_TX_LEN/2)/RADIO_USR_TX_LEN);
+		#endif
 	}
 }
-#ifdef LIB
+#if defined(LIB)  // accommodate mavlink opt
 void lgdst_ctl_snd_rx(unsigned char *tpacket)
 {
 	if (tpacket) {
+		#if !(USE_MAVLINK)
 		// tpacket buffer must be the same length:RADIO_USR_TX_LEN
 		memcpy(radio_tpacket, tpacket, sizeof(radio_tpacket));
+		#endif
 	}
 }
 #endif
@@ -556,7 +575,7 @@ void lgdst_ctl_snd_rx(unsigned char *tpacket)
 			memcpy(&lclMem, &shmLgdst_proc->access, sizeof(dAccess));
 			switch(shmLgdst_proc->type) {
 			case CMD0:
-				printf("CMD0: wValue = %d, wIndex = %d\n", shmLgdst_proc->tag.wValue,shmLgdst_proc->tag.wIndex);  // for debug
+				printf("CMD0: wValue = %d, wIndex = %d\n", shmLgdst_proc->tag.wValue,shmLgdst_proc->tag.wIndex);
 				pthread_mutex_lock(&mux);
 				libusb_control_transfer(devh,CTRL_OUT,USB_RQ,shmLgdst_proc->tag.wValue,shmLgdst_proc->tag.wIndex,NULL, 0, 0);
 				pthread_mutex_unlock(&mux);
@@ -569,7 +588,7 @@ void lgdst_ctl_snd_rx(unsigned char *tpacket)
 					break;
 				}
 				printf("CMD1: wDir = %d, wValue = %d, wIndex = %d, len= %d, data = %d\n",
-						shmLgdst_proc->tag.wDir,shmLgdst_proc->tag.wValue,shmLgdst_proc->tag.wIndex,shmLgdst_proc->len,*(int*)acs->data);  // for debug
+						shmLgdst_proc->tag.wDir,shmLgdst_proc->tag.wValue,shmLgdst_proc->tag.wIndex,shmLgdst_proc->len,*(int*)acs->data);
 				pthread_mutex_lock(&mux);
 				libusb_control_transfer(devh,shmLgdst_proc->tag.wDir,USB_RQ,shmLgdst_proc->tag.wValue,shmLgdst_proc->tag.wIndex,(unsigned char*)acs->data,shmLgdst_proc->len, 0);
 				pthread_mutex_unlock(&mux);
@@ -577,7 +596,7 @@ void lgdst_ctl_snd_rx(unsigned char *tpacket)
 					memcpy(&shmLgdst_proc->access.hdr.data,&lclMem.hdr.data, shmLgdst_proc->len);
 				break;
 			case ACS:
-				printf("ACS: direction = %d, processor = %d\n",(int)shmLgdst_proc->tag.wDir,(int)shmLgdst_proc->tag.wIndex);  // for debug
+				printf("ACS: direction = %d, processor = %d\n",(int)shmLgdst_proc->tag.wDir,(int)shmLgdst_proc->tag.wIndex);
 				if (CTRL_IN==shmLgdst_proc->tag.wDir) {
 					pthread_mutex_lock(&mux_thr);
 					Demodulator_readRegisters (
@@ -747,8 +766,8 @@ int tsptsadj(unsigned char* buff, int len, int pidid, int pcrid)
   stcval = ((int64_t)time_delta.tv_sec*STC_HALF_RATE)+ ( ((time_delta.tv_usec*(STC_HALF_RATE/1000)+500)/1000)/*/1000*/);
 
   if((abs(time_curr.tv_sec - time_prev.tv_sec) > 15)) {
-    get_time(&time_prev); // clock_gettime() use timespec not timeval, all calculations went wrong! liyenho
-    get_time(&time_curr); // clock_gettime() use timespec not timeval, all calculations went wrong! liyenho
+    get_time(&time_prev); // clock_gettime() use timespec not timeval, all calculations went wrong!
+    get_time(&time_curr); // clock_gettime() use timespec not timeval, all calculations went wrong!
  }
   /*
   if((time_curr.tv_sec > (time_prev.tv_sec+1))||
@@ -765,7 +784,7 @@ int tsptsadj(unsigned char* buff, int len, int pidid, int pcrid)
         tagprev = tag;
         ccerror =0;
     frmcnt=0;
-    get_time(&time_prev); // clock_gettime() use timespec not timeval, all calculations went wrong! liyenho
+    get_time(&time_prev); // clock_gettime() use timespec not timeval, all calculations went wrong!
   }
   */
 
@@ -775,10 +794,10 @@ int tsptsadj(unsigned char* buff, int len, int pidid, int pcrid)
     if((tspkt[1]&0x80)==0x80)
     {
       frmbadflg=1;
-      dbg_tseicnt += 1; // liyenho
+      dbg_tseicnt += 1; //added by  liyenho
       memcpy(tspkt, nullts_spec, sizeof(nullts_spec));
     }
-	 dbg_tscnt += 1;  // liyenho
+	 dbg_tscnt += 1;  // added by liyenho
     if((tspkt[1]&0x40)==0x40) pusihit=1;
     else                      pusihit=0;
     if(   ((tspkt[1]&0x1f)==((pidid>>8)&0x1f))  &&
@@ -1356,7 +1375,7 @@ int init_rf2072(void)
 	int ii;
 	uint32_t frames_len;
 	int frag, sentsize;
-	stream_on = true; // slow down ctrl xfer access at real time, liyenho
+	stream_on = true; // slow down ctrl xfer access at real time,
 #ifndef LIB
 	tag = 0;
 	dev_access *acs = (dev_access*)msg;
@@ -1413,7 +1432,7 @@ int init_rf2072(void)
 frm_inc:
 		tag += 1;
 		if (ITERS==tag)
-			tag = 0; // make it endless, liyenho
+			tag = 0; // make it endless
 #else  // in LIB mode
 		memcpy(tsbuf0, audbuf, FRAME_SIZE_A);
 #endif
