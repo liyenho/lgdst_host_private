@@ -670,7 +670,7 @@ retry7:
 															RADIO_COMM_VAL,
 															RADIO_DATA_TX_IDX,
 															pending,
-															MAVLINK_USB_LEN,
+															size,
 															0);
 		pthread_mutex_unlock(&mux);
 		usleep(10*CTRL_SEND_POLLPERIOD);
@@ -756,7 +756,7 @@ retry5:
 															      RADIO_COMM_VAL,
 															      RADIO_DATA_TX_IDX,
 															      pending,
-															      MAVLINK_USB_LEN,
+															      size,
 															      0);
 		      pthread_mutex_unlock(&mux);
 		      usleep(10*CTRL_SEND_POLLPERIOD);
