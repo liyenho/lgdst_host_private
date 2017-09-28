@@ -9,7 +9,7 @@
 #define MAVLINK_H
 
 #define MAVLINK_CHKSUM_LEN							2  // two bytes
-#define MAVLINK_START_SIGN							0x55 //this is always the first byte 
+#define MAVLINK_START_SIGN							0x55 //this is always the first byte
 #define MAVLINK_HDR_LEN								6
 
 #define MAVLINK_ID_DATA								0x00
@@ -23,7 +23,7 @@
 
 #define MAVLINK_USB_TRANSFER_LEN		(30+MAVLINK_HDR_LEN+MAVLINK_CHKSUM_LEN)
 
-typedef struct 
+typedef struct
 {
 	uint8_t header;
 	uint8_t length; //this describes how long the data payload is
@@ -35,7 +35,7 @@ typedef struct
 	uint8_t checksum[MAVLINK_CHKSUM_LEN];
 }MavLinkPacket;
 
-#define UART_STR_LEN	512  // for efficiency
+#define UART_STR_LEN	/*512*/1024  // for efficiency, to cover 2 max sized pkt back to back
 
 typedef struct { // added by liyenho
 	uint32_t sts_next;
