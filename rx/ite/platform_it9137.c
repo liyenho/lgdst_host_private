@@ -689,7 +689,7 @@ retry7:
 #endif
 	} while ( 100 > i++);  // flood Tx with vch sel msg
 	if (1 == do_exit)
-		short_sleep(10);  // allow sufficient time for tx to startup video
+		short_sleep(5);  // allow sufficient time for tx to startup video
 	// wait for video coming from TX
 	while (1 == do_exit) {
 retry4:
@@ -735,7 +735,7 @@ retry5:
 #if 0
 				usleep(CTRL_SEND_POLLPERIOD); // send again asap
 #else
-				usleep(1.0); // send again after a sec
+				short_sleep(1.0); // send again after a sec
 #endif
 #if 0	// disable acknowledge process, liyenho
 			if (RADIO_USR_RX_LEN != i) {
