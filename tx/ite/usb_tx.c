@@ -1693,11 +1693,17 @@ void fsm_time_ant_sw() {
 	static int tm_tick =0;
 	tm_tick += 1;
 	switch(tm_tick) {
-		case 1: it9517_adjust_output_gain(1);
+		case 1: #ifndef UART_COMM
+							it9517_adjust_output_gain(1);
+						#endif
 						break;
-		case 2: it9517_adjust_output_gain(2);
+		case 2: #ifndef UART_COMM
+							it9517_adjust_output_gain(2);
+						#endif
 						break;
-		case 3: it9517_adjust_output_gain(3);
+		case 3: #ifndef UART_COMM
+							it9517_adjust_output_gain(3);
+						#endif
 						pthread_mutex_lock(&mux);
 		 				libusb_control_transfer(devh,
 		 													CTRL_OUT,
@@ -1709,11 +1715,17 @@ void fsm_time_ant_sw() {
 															0);
 						pthread_mutex_unlock(&mux);
 						break ;
-		case 4: it9517_adjust_output_gain(2);
+		case 4: #ifndef UART_COMM
+							it9517_adjust_output_gain(2);
+						#endif
 						break;
-		case 5: it9517_adjust_output_gain(1);
+		case 5: #ifndef UART_COMM
+							it9517_adjust_output_gain(1);
+						#endif
 						break;
-		case 6: it9517_adjust_output_gain(0);
+		case 6: #ifndef UART_COMM
+							it9517_adjust_output_gain(0);
+						#endif
 						break;
 		default: break;
 	}
