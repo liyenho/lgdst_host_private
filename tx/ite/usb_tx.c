@@ -1693,15 +1693,18 @@ void fsm_time_ant_sw() {
 	static int tm_tick =0;
 	tm_tick += 1;
 	switch(tm_tick) {
-		case 1: #ifndef UART_COMM
+		case 1:
+						#ifndef UART_COMM
 							it9517_adjust_output_gain(1);
 						#endif
 						break;
-		case 2: #ifndef UART_COMM
+		case 2:
+						#ifndef UART_COMM
 							it9517_adjust_output_gain(2);
 						#endif
 						break;
-		case 3: #ifndef UART_COMM
+		case 3:
+						#ifndef UART_COMM
 							it9517_adjust_output_gain(3);
 						#endif
 						pthread_mutex_lock(&mux);
@@ -1715,15 +1718,18 @@ void fsm_time_ant_sw() {
 															0);
 						pthread_mutex_unlock(&mux);
 						break ;
-		case 4: #ifndef UART_COMM
+		case 4:
+						#ifndef UART_COMM
 							it9517_adjust_output_gain(2);
 						#endif
 						break;
-		case 5: #ifndef UART_COMM
+		case 5:
+						#ifndef UART_COMM
 							it9517_adjust_output_gain(1);
 						#endif
 						break;
-		case 6: #ifndef UART_COMM
+		case 6:
+						#ifndef UART_COMM
 							it9517_adjust_output_gain(0);
 						#endif
 						break;
