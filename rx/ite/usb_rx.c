@@ -262,11 +262,11 @@ int socket_send_len =0;
 void *ctrl_poll_recv(void *arg)
 {
 	int r, i;
+	bool ctrl_sckt_ok = *(bool*)arg;
 	unsigned char ctrl_recv_fifolvl_data = 0;
 	unsigned char validdataflag = 0;
 	long pv_wrbyte = 0;
 	while (1 == do_exit) {
-		bool ctrl_sckt_ok = *(bool*)arg;
 		if (ctrl_sckt_ok) {
 			pthread_mutex_lock(&mux);
 #if USE_MAVLINK
