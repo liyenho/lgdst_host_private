@@ -275,6 +275,7 @@ int short_sleep(double sleep_time)
 void *ctrl_poll_recv(void *arg)
 {
 	int r, r1, i;
+	bool failed_to_get, ctrl_sckt_ok = *(bool*)arg;
 	unsigned char validdataflag = 0;
 	long pv_wrbyte = 1, // changed to 1 for proper wait time
 	     /*for sensitivity meas*/
@@ -290,7 +291,6 @@ void *ctrl_poll_recv(void *arg)
 	uart_tv.tv_usec = 3/*1.5*/*(1000000 * 10 + 115200 - 1) / 115200 * sizeof(radio_rpacket1);
 #endif
 	while (1 == do_exit) {
-		bool failed_to_get, ctrl_sckt_ok = *(bool*)arg;
 		bool filler_data;
 		if (ctrl_sckt_ok) {
 #ifndef UART_COMM
