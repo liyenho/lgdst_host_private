@@ -277,7 +277,7 @@ void *ctrl_poll_recv(void *arg)
 	int r, r1, i;
 	bool failed_to_get, ctrl_sckt_ok = *(bool*)arg;
 	unsigned char validdataflag = 0;
-	long pv_wrbyte = 1, // changed to 1 for proper wait time
+	long pv_wrbyte =RADIO_USR_RX_LEN, // changed to 1 for proper wait time
 	     /*for sensitivity meas*/
 	     pkt_cnt = 0;
 #ifdef UART_COMM
@@ -384,16 +384,21 @@ void *ctrl_poll_recv(void *arg)
 					pb = incoming_data+ sizeof(incoming_data)/2;  // mav pkt out buffer ptr,
 					complete= Build_MavLink_from_Byte_Stream(pb, &overrun, incoming_data, r1);
 						if (complete) {
-							printf("Serial Rx: %s ", (overrun)?"buffer overrun":"\0");
-							PrintMavLink((MavLinkPacket*)pb);
-							Set_Mavlink_Checksum(pb) ; //write chksm into right place
-							printf("Checksum %s",
-								(Compute_Mavlink_Checksum((MavLinkPacket*)pb) == \
-								*(uint16_t *)((MavLinkPacket*)pb)->checksum) ? "OK" : "Error");
-								printf("\n\n");
-						socket_send_len = MAVLINK_HDR_LEN+((MavLinkPacket*)pb)->length+MAVLINK_CHKSUM_LEN;
-						memcpy(socket_send_buffer, pb /*pkt start here*/, socket_send_len);
-								pv_wrbyte = sendto(ctrlrcv_socket, socket_send_buffer, socket_send_len, 0, (struct sockaddr *)&ctrlrcv, sizeof(ctrlrcv));
+							uint8_t *pbp =((MavLinkPacket*)pb)->data;
+							filler_data = ((pbp[0] == 0xee) && (pbp[1] == 0xee));
+							validdataflag = !filler_data && ((pbp[0] != 0xe5) && (pbp[1] != 0xe5));
+							if (validdataflag) {
+									printf("Serial Rx: %s ", (overrun)?"buffer overrun":"\0");
+									PrintMavLink((MavLinkPacket*)pb);
+									Set_Mavlink_Checksum(pb) ; //write chksm into right place
+									printf("Checksum %s",
+										(Compute_Mavlink_Checksum((MavLinkPacket*)pb) == \
+										*(uint16_t *)((MavLinkPacket*)pb)->checksum) ? "OK" : "Error");
+										printf("\n\n");
+								socket_send_len = MAVLINK_HDR_LEN+((MavLinkPacket*)pb)->length+MAVLINK_CHKSUM_LEN;
+								memcpy(socket_send_buffer, pb /*pkt start here*/, socket_send_len);
+										pv_wrbyte = sendto(ctrlrcv_socket, socket_send_buffer, socket_send_len, 0, (struct sockaddr *)&ctrlrcv, sizeof(ctrlrcv));
+						}
 					}
 				}
 
@@ -406,7 +411,7 @@ void *ctrl_poll_recv(void *arg)
 			usleep(CTRL_RECV_POLLPERIOD);
 			#else  // make data rate as close to maximum as possible
 			usleep(CTRL_RECV_POLLPERIOD*(pv_wrbyte+RADIO_USR_RX_LEN/2)/RADIO_USR_RX_LEN);
-			pv_wrbyte = 1;
+			pv_wrbyte = RADIO_USR_RX_LEN;
 			#endif
 
 		} //ctrl_sckt_ok
