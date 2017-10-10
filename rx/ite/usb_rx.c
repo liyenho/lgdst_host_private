@@ -304,7 +304,8 @@ void *ctrl_poll_recv(void *arg)
 
 
 #if USE_MAVLINK
-			if (!filler_flag) {
+			socket_send_len = 0;
+			if (validdataflag) {
 				memcpy(socket_send_buffer, radio_rpacket, pv_wrbyte); // straight memcpy entire pkt
 				printf("Radio Rx: ");
 				PrintMavLink(socket_send_buffer);
