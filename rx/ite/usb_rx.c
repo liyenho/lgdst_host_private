@@ -1293,40 +1293,8 @@ int init_rf2072(void)
 		printf("xxxxxx 0x%04x @ 0x%x written xxxxxx\n",*(uint16_t*)acs->data,acs->addr);
 
 		short_sleep(0.5);
-#if 0
-//read action after 2072 all write
-	acs->dcnt = sizeof(uint16_t);
-	acs->access = RF2072_READ;
-    	  acs->addr = 0x00;
-   pthread_mutex_lock(&mux);
-	libusb_control_transfer(devh,
-						CTRL_OUT, USB_RQ,
-						USB_HOST_MSG_TX_VAL,
-						USB_HOST_MSG_IDX,
-						acs, sizeof(*acs)+(acs->dcnt-1), 0);
-	pthread_mutex_unlock(&mux);
-	short_sleep(0.2);
-		while(1) {
-			pthread_mutex_lock(&mux);
-			if (libusb_control_transfer(devh,CTRL_IN, USB_RQ,USB_HOST_MSG_RX_VAL,USB_HOST_MSG_IDX,(unsigned char*)acs, sizeof(*acs)+(acs->dcnt-1), 0)){
-				pthread_mutex_unlock(&mux);
-				break;
-			}
-			pthread_mutex_unlock(&mux);
-			short_sleep(0.0005);
-		}
-	short_sleep(0.2);
-	printf("reg 0x%x = 0x%04x\n",acs->addr,*(uint16_t*)acs->data);
 #endif
-#endif
-
 #if 1
-/*{
-	puts("read from 0x00");
-	char tmpb[8], *pt=tmpb;
-	unsigned char ln= sizeof(tmpb);
-	getline(&pt, &ln, stdin);
-}*/
     	  acs->access = RF2072_WRITE;
     	  acs->dcnt = sizeof(uint16_t);
     	  acs->addr = 0x1D;
