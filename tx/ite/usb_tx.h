@@ -53,9 +53,8 @@ typedef int bool;
 #endif
 #define ITERS										(FILE_LEN/FRAME_SIZE_A)
 #define FRAME_BUFFS									5
-#define TIMEOUT										1000		// audio time out @ 10 msec
 #define UDP_PACKET_MAX 								1880
-//#define VIDEO_DUAL_BUFFER		// accommodate dual stream protection scheme
+#define VIDEO_DUAL_BUFFER		// accommodate dual stream protection scheme
 #define PID_VID										0x100
 #ifdef VIDEO_DUAL_BUFFER
 	#define TP_CONV // converted ts  in real time
