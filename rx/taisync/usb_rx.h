@@ -29,7 +29,6 @@ typedef int bool;  // match definition in usb_core.h
 #define FRAME_SIZE_V2							(FRAME_SIZE_V*2)
 #define ITERS									(FILE_LEN/FRAME_SIZE_A)
 #define FRAME_BUFFS								5
-#define TIMEOUT									1000
 #define servIP  								"127.0.0.1"
 #define ctrl_port_base 							5560
 #define ERR_CHK_BUFFS                   	    160
