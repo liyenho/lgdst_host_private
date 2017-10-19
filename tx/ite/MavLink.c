@@ -57,7 +57,8 @@ uint32_t Compute_Mavlink_Checksum(MavLinkPacket *packet){
 		crc_accumulate(*(uint8_t *)((&packet->length)+i), &checksum);
 	}
 	//add CRC Extra per MavLink definition
-	crc_accumulate(MAVLINK_MESSAGE_CRCS[packet->message_ID], &checksum);
+	int msg_id = (sizeof(MAVLINK_MESSAGE_CRCS)<=packet->message_ID)?0:packet->message_ID;
+	crc_accumulate(MAVLINK_MESSAGE_CRCS[msg_id/*protect against msg corruption*/], &checksum);
 
 	return checksum;
 }

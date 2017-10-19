@@ -29,7 +29,7 @@ const uint8_t MAVLINK_MESSAGE_CRCS[] = {50, 124, 137,   0, 237, 217, 104, 119,  
 									     0,   0,   0,   0,   0,   0,   0,   0,   0,   0,\
 									     0,   0,   0,   0,   0,   0,   0,   0,   0,   0,\
 									     0,   0,   0,   0,   0,   0,   0,   0,   0,   0,\
-									     0,   0,   0,   0,   0,   0,   0,   0,   0,   0,\ 
+									     0,   0,   0,   0,   0,   0,   0,   0,   0,   0,\
 									     0,   0,   0,   0,   0,   0,   0,   0,   0,   0,\
 									     0,   0,   0,   0,   0,   0,   0,   0,   0,   0,\
 									     0,   0,   0,   0,   0,   0,   0,   0,   0,   0,\
@@ -49,14 +49,15 @@ static inline void crc_accumulate(uint8_t data, uint16_t *crcAccum)
 
 
 uint32_t Compute_Mavlink_Checksum(MavLinkPacket *packet){
-	
+
 	uint16_t checksum = X25_INIT_CRC;
 	//compute checksum, excluding packet start sign
 	for (int i =0; i< (packet->length+MAVLINK_HDR_LEN-1); i++){
 		crc_accumulate(*(uint8_t *)((&packet->length)+i), &checksum);
 	}
 	//add CRC Extra per MavLink definition
-	crc_accumulate(MAVLINK_MESSAGE_CRCS[packet->message_ID], &checksum);
+	int msg_id = (sizeof(MAVLINK_MESSAGE_CRCS)<=packet->message_ID)?0:packet->message_ID;
+	crc_accumulate(MAVLINK_MESSAGE_CRCS[msg_id/*protect against msg corruption*/], &checksum);
 	return checksum;
 }
 
