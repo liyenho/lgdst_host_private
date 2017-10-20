@@ -1517,6 +1517,15 @@ printf("line # = %d\n", __LINE__);
 	printf("diff=%ld,diff1=%ld,diff+diff1=%ld\n",diff,diff1,diff+diff1);
 
 	ready_wait_for_mloop = true;
+	do {
+	    pthread_mutex_lock(&mux);
+	    libusb_control_transfer(devh,
+						CTRL_IN, USB_RQ,
+						USB_STREAM_ON_VAL,
+						USB_QUERY_IDX,
+						&main_loop_on, sizeof(main_loop_on), 0);
+	    pthread_mutex_unlock(&mux);
+	} while (!main_loop_on);
 #ifndef VIDEO_DUAL_BUFFER
 	if(0>receive(2549/*usec*/, audbuf, UDP_PACKET_MAX))
 		perror_exit("invalid socket read, bailed out...", -6);
@@ -1545,6 +1554,15 @@ printf("line # = %d\n", __LINE__);
 				printf("send a transport packet block,%d\n",tag);
 				n += 1;
 			}
+		do {
+		    pthread_mutex_lock(&mux);
+		    libusb_control_transfer(devh,
+							CTRL_IN, USB_RQ,
+							USB_STREAM_ON_VAL,
+							USB_QUERY_IDX,
+							&main_loop_on, sizeof(main_loop_on), 0);
+		    pthread_mutex_unlock(&mux);
+		} while (!main_loop_on);
  	} while (i <ONE_SEC_WORTHY/UDP_PACKET_MAX);
  	ts1_blk_cnt = i; // this shall be actual size of '1 sec' buffer!
  	pte = vidbuf + i*UDP_PACKET_MAX;
@@ -1558,6 +1576,15 @@ printf("line # = %d\n", __LINE__);
 #endif
 	while (ITERS>=tag) {
 		if (1 != do_exit) break; // we can't fail here......
+		do {
+		    pthread_mutex_lock(&mux);
+		    libusb_control_transfer(devh,
+							CTRL_IN, USB_RQ,
+							USB_STREAM_ON_VAL,
+							USB_QUERY_IDX,
+							&main_loop_on, sizeof(main_loop_on), 0);
+		    pthread_mutex_unlock(&mux);
+		} while (!main_loop_on);
 	#ifndef VIDEO_DUAL_BUFFER
 		if ((0>stream_block(audbuf,FRAME_SIZE_A)))
 			continue;

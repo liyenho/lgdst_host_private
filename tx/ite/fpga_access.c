@@ -21,7 +21,7 @@
 
 #define true													1
 #define false													0
-#define print_usage                    puts("lgdst 0 tx bm/Va/[Uc]/ns/s/pair-id/pair-locked/loc-gps/ant-qry/droneyaw/camyaw/MDst/temp/ctune/calib/calib-qry/hopless/setFEC/SiGetProp/RSSI/setCtrlPwr/sc fpath [chidx] [bsz] [val0,val1,...], all numbers are in hex");
+#define print_usage                    puts("lgdst 0 tx bm/Va/[Uc]/ns/s/pair-id/pair-locked/loc-gps/ant-qry/droneyaw/camyaw/MDst/temp/ctune/calib/calib-qry/hopless/setFEC/SiGetProp/RSSI/setCtrlPwr/sc/set_vch fpath [chidx] [bsz] [val0,val1,...], all numbers are in hex");
 #define RAED_SETUP	\
 							shmLgdst_proc->type = ACS; \
 							shmLgdst_proc->tag.wDir = CTRL_OUT; \
@@ -205,6 +205,7 @@ static void ctrl_chsel_func(int entry) {
 			strcasecmp(argv[3], setFEC)&&
 			strcasecmp(argv[3], setCtrlPwr)&&
 			strcasecmp(argv[3], SiGetProp)&&
+			strcasecmp(argv[3], "set_vch")&&
 			strcasecmp(argv[3], "sc")/*sensitivity measure on ctrl link*/))
 			{
     	  	  	puts("invalid access mode...");
@@ -436,7 +437,19 @@ static void ctrl_chsel_func(int entry) {
 					memcpy(shmLgdst_proc->access.hdr.data, &yaw, CAMERA_YAW_LEN);
 
 			    }
-
+				else if (!strcasecmp(argv[3], "set_vch")) { // set video IF frequency by ch index
+					uint8_t vch = htoi(argv[4]);
+					if (10< vch) {
+						puts("video channel index must be within [1,10]");
+						goto _exit ;
+					}
+			     	shmLgdst_proc->type = CMD1;
+					shmLgdst_proc->len = sizeof(vch); // 1 byte vid ch idx
+					shmLgdst_proc->tag.wDir = CTRL_OUT;
+					shmLgdst_proc->tag.wValue = VIDEO_SETVCH_VAL;
+					shmLgdst_proc->tag.wIndex = VIDEO_SETVCH_IDX;
+					memcpy(shmLgdst_proc->access.hdr.data, &vch, sizeof(vch));
+				}
 			    else if (!strcasecmp(argv[3],"ant-qry")){
 					puts("Getting active antenna\n");
 			    	shmLgdst_proc->type = CMD1;
