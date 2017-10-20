@@ -163,6 +163,8 @@ typedef enum{
 	#define VID_IF_CH_BASE				(MIN_VID_CH_F-LO_Frequency)
 	#define VID_IF_CH_CEIL				VID_IF_CH_BASE+(NUM_OF_VID_CH-1)*VID_CH_TTL
 	#define VID_CH_STR_THR			-61	// translated to approximately 1 miles attenuation
+#define VIDEO_SETVCH_VAL								0x14
+  #define VIDEO_SETVCH_IDX								0x2
 
 extern bool stream_on ; // ctrl xfer access speed flag,
 intmax_t get_file_size(const char* file_path);

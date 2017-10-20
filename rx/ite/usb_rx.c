@@ -71,6 +71,11 @@ unsigned char vidbuf[FRAME_SIZE_V2]__attribute__((aligned(8)));
 #ifdef VIDEO_DUAL_BUFFER
 	ctx_dual_stream dual_str_ctx = {0};
 #endif
+const uint32_t vch_tbl[] = {
+	2392, 2406, 2413, 2420,
+	2427, 2434, 2441, 2448,
+	2455, 2462, 2469
+};
 
 static bool detached = false;
 struct libusb_device_handle *devh = NULL;
@@ -593,6 +598,21 @@ void lgdst_ctl_snd_rx(unsigned char *tpacket)
 				pthread_mutex_lock(&mux);
 				libusb_control_transfer(devh,shmLgdst_proc->tag.wDir,USB_RQ,shmLgdst_proc->tag.wValue,shmLgdst_proc->tag.wIndex,(unsigned char*)acs->data,shmLgdst_proc->len, 0);
 				pthread_mutex_unlock(&mux);
+				if (VIDEO_SETVCH_VAL == shmLgdst_proc->tag.wValue) {
+					uint8_t vch = *(uint8_t*)acs->data;
+					if (sizeof(vch_tbl)>vch) {
+						it9137_acquire_channel(0,vch_tbl[vch]*1000-LO_Frequency,6000);
+						short_sleep(0.2);
+						int32_t msg[80]; // access buffer
+							dev_access *acs = (dev_access*)msg;
+							acs->access = TS_VID_ACTIVE;
+							acs->dcnt = 0; // no param
+							acs->addr = 0x0; // by wire not addr
+							pthread_mutex_lock(&mux);
+							libusb_control_transfer(devh,CTRL_OUT,USB_RQ,USB_HOST_MSG_TX_VAL,USB_HOST_MSG_IDX,(unsigned char*)acs, sizeof(*acs), 0);
+							pthread_mutex_unlock(&mux);
+					}
+				}
 				if (CTRL_IN==shmLgdst_proc->tag.wDir)
 					memcpy(&shmLgdst_proc->access.hdr.data,&lclMem.hdr.data, shmLgdst_proc->len);
 				break;
@@ -1263,8 +1283,8 @@ int init_rf2072(void)
 	libusb_control_transfer(devh,CTRL_OUT,USB_RQ,USB_HOST_MSG_TX_VAL,USB_HOST_MSG_IDX,(unsigned char*)acs, sizeof(*acs), 0);
 	pthread_mutex_unlock(&mux);
 	short_sleep(0.2);
-
-	rffe_write_regs(pregs=GET_ARRAY(chsel_2072), sz=ARRAY_SIZE(chsel_2072));
+													// always 0, for rffc 2072 main startup, liyenho
+	rffe_write_regs(pregs=GET_ARRAY(0), sz=ARRAY_SIZE(0));
 	short_sleep(0.2);
      set_frequency_rf2072(LO_Frequency);
 	 printf("rx rffe is running...\n");
@@ -1769,7 +1789,7 @@ int udpout_init(char* udpaddr)
 	//if(error)goto _exit;
 //     error= it9137_scan_channel(0,747000,832000, 6000);
   //  if(error)goto _exit;
-	error=it9137_acquire_channel(0,/*809000*//*720000*/699000,6000);
+	error=it9137_acquire_channel(0,vch_tbl[chsel_2072]*1000-LO_Frequency,6000);
 	if(error)goto _exit;
 	//error=it9137_get_if_agc(0);
 //	if(error)goto _exit;

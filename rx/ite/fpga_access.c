@@ -18,7 +18,7 @@
 
 #define true								1
 #define false								0
-#define print_usage                    puts("lgdst 0 rx r/w/bm/Va/[Uc]/ns/s/pair-id/pair-locked/loc-gps/MDst/temp/ctune/calib/calib-qry/hopless/setFEC/SiGetProp/RSSI/ant-sw/setCtrlPwr/use915/use869/setRadioChannel fpath [chidx] [bsz] [val0,val1,...], all numbers are in hex");
+#define print_usage                    puts("lgdst 0 rx r/w/bm/Va/[Uc]/ns/s/pair-id/pair-locked/loc-gps/MDst/temp/ctune/calib/calib-qry/hopless/setFEC/SiGetProp/RSSI/ant-sw/setCtrlPwr/use915/use869/setRadioChannel/set_vch fpath [chidx] [bsz] [val0,val1,...], all numbers are in hex");
 #define RAED_SETUP	\
 							shmLgdst_proc->type = ACS; \
 							shmLgdst_proc->tag.wDir = CTRL_OUT; \
@@ -206,6 +206,7 @@ static void ctrl_chsel_func(int entry) {
 			strcasecmp(argv[3], use915)&&
 			strcasecmp(argv[3], setRadioChannel)&&
 			strcasecmp(argv[3], ant_sw)&&
+			strcasecmp(argv[3], "set_vch")&&
 			 strcasecmp(argv[3],"r")&& strcasecmp(argv[3],"w")))
 			{
     	  	  	puts("invalid access mode...");
@@ -230,6 +231,19 @@ static void ctrl_chsel_func(int entry) {
 				shmLgdst_proc->type = CMD0;
 				shmLgdst_proc->tag.wValue = USB_ANT_SW_VAL;
 				shmLgdst_proc->tag.wIndex = 0x1; // current cdc data interface
+			}
+			else if (!strcasecmp(argv[3], "set_vch")) { // set video IF frequency by ch index
+				uint8_t vch = htoi(argv[4]);
+				if (10< vch) {
+					puts("video channel index must be within [1,10]");
+					goto _exit ;
+				}
+			  	shmLgdst_proc->type = CMD1;
+				shmLgdst_proc->len = sizeof(vch); // 1 byte vid ch idx
+				shmLgdst_proc->tag.wDir = CTRL_OUT;
+				shmLgdst_proc->tag.wValue = VIDEO_SETVCH_VAL;
+				shmLgdst_proc->tag.wIndex = VIDEO_SETVCH_IDX;
+				memcpy(shmLgdst_proc->access.hdr.data, &vch, sizeof(vch));
 			}
 			else if (false/*rx*/==work_mode && !strcasecmp(argv[3],"Cch")) { // control RF channel selection
 				uint8_t *ch_param = NULL;

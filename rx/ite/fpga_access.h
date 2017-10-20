@@ -232,3 +232,18 @@ const uint8_t *chtbl_ctrl_len[/*2*/] = {
 
 
 #include "rf2072_set.h"
+/*
+CHANNEL	FREQ (MHz)
+1		2406
+2		2413
+3		2420
+4		2427
+5		2434
+6		2441
+7		2448
+8		2455
+9		2462
+10		2469
+*/
+#define VIDEO_SETVCH_VAL								0x14
+  #define VIDEO_SETVCH_IDX								0x2
