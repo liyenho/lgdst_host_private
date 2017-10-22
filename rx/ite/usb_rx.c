@@ -1718,9 +1718,16 @@ int udpout_init(char* udpaddr)
 			return ;
 		}
   }
-
 #endif
-//set channel value = set channel -1583000
+
+#define SCHEME_RETRY(it9517_func_call, err_val) \
+	err_cnt = 0; \
+	do { \
+		error=it9517_func_call ; \
+		if (5<=err_cnt++) \
+			{error=err_val; goto exit;} \
+	} while(error );
+
 #ifdef LIB
   int lgdst_init_vid_rx()
 #else
@@ -1729,7 +1736,7 @@ int udpout_init(char* udpaddr)
 {
 	Pid pid;
 	pid.value=0x100;
-	uint32_t error=Error_NO_ERROR;
+	uint32_t error=Error_NO_ERROR, err_cnt;
 #ifndef LIB
 	#if (/*1*/0)
 		init_device();
@@ -1765,77 +1772,28 @@ int udpout_init(char* udpaddr)
 #else
 	init_rf2072();
 
-#if 1
-//	error= it9137_reset();
-//	if(error)goto _exit;
-//	error=it9137_reboot();
-//	if(error)goto _exit;
-//	error= it9137_control_power_saving(0,0);
-//	if(error)goto _exit;
-//	error= it9137_control_power_saving(0,1);
-//	if(error)goto _exit;
-//	error=it9137_reboot();
-//	if(error)goto _exit;
-
-	error=it9137_init();
-	if(error)goto _exit;
-
+	SCHEME_RETRY(it9137_init(), 1)
 #if DYNAMIC_VIDEO_CHANNEL_SCAN
 	if (it9137_video_channel_scan(False))
 		goto _exit;  // channel scan failed
 #else // fixed frequency setting
   	bool istpslocked = true;
-	//error=it9137_get_firmwareversion();
-	//if(error)goto _exit;
-//     error= it9137_scan_channel(0,747000,832000, 6000);
-  //  if(error)goto _exit;
-	error=it9137_acquire_channel(0,vch_tbl[chsel_2072]*1000-LO_Frequency,6000);
-	if(error)goto _exit;
-	//error=it9137_get_if_agc(0);
-//	if(error)goto _exit;
-//	error=it9137_get_rf_agc_gain(0);
-//	if(error)goto _exit;
-#if 0
-	error=it9137_control_pid_filter(0,1);
-	if(error)goto _exit;
-	error=it9137_add_pid_filter(0,0,pid);
-	if(error)goto _exit;
-	error= it9137_control_power_saving(0,1);
-	if(error)goto _exit;
-#endif
+	SCHEME_RETRY(it9137_acquire_channel(0,vch_tbl[chsel_2072]*1000-LO_Frequency,6000), 2)
 
 	int i=0;
 	while(i<1){
-	error=it9137_check_tpslocked(0, &istpslocked);
-	if(error)goto _exit;
-	error=it9137_check_mpeg2locked(0);
-	if(error)goto _exit;
-	//do not call this api interface ,some error inside
-	//error=it9137_get_channel_modulation(0);
-	//if(error)goto _exit;
-	error=it9137_get_signal_quality(0);
-	if(error)goto _exit;
-	error=it9137_get_signal_quality_indication(0);
-	if(error)goto _exit;
-	error=it9137_get_signal_strength(0);
-	if(error)goto _exit;
-	error=it9137_get_signal_strength_indication(0);
-	if(error)goto _exit;
-	error=it9137_get_statistic(0);
-	if(error)goto _exit;
-	error=it9137_get_signal_strength_dbm(0, NULL);
-	if(error)goto _exit;
-	error=it9137_get_postviterbi_bit_error_rate(0, NULL);
-	if(error)goto _exit;
-	error=it9137_get_snr(0, NULL);
-	if(error)goto _exit;
-	//error= it9137_reset();
-	//if(error)goto _exit;
-	//error=it9137_reboot();
-	//if(error)goto _exit;
+	SCHEME_RETRY(it9137_check_tpslocked(0, &istpslocked), 3)
+	SCHEME_RETRY(it9137_check_mpeg2locked(0), 4)
+	SCHEME_RETRY(it9137_get_signal_quality(0), 5)
+	SCHEME_RETRY(it9137_get_signal_quality_indication(0), 6)
+	SCHEME_RETRY(it9137_get_signal_strength(0), 7)
+	SCHEME_RETRY(it9137_get_signal_strength_indication(0), 8)
+	SCHEME_RETRY(it9137_get_statistic(0), 9)
+	SCHEME_RETRY(it9137_get_signal_strength_dbm(0, NULL), 10)
+	SCHEME_RETRY(it9137_get_postviterbi_bit_error_rate(0, NULL), 11)
+	SCHEME_RETRY(it9137_get_snr(0, NULL), 12)
 	i++;
 	}
-#endif
 #endif
 #endif
 ready_wait_for_mloop = true;
