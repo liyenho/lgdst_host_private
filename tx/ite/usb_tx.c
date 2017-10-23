@@ -326,15 +326,18 @@ void *ctrl_poll_recv(void *arg)
 						byteerror++;
 						becnt++;
 					}
-				if (byteerror > 0) printf("User packet corruption = %d. ++++++++++\n", becnt);
+				if (becnt > 0) {
+					printf("User packet corruption = %d. ++++++++++\n", becnt);
+					 becnt = 0;  // reset otherwise look silly, liyenho
+				}
 				val_cur = radio_rpacket[5];
-				val_exp = (unsigned char)(val_exp + 1);
 				if (val_exp != val_cur)
 				{
 					ilcnt++;
-					printf("User packet dataloss = %d. !!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", ilcnt);
+					printf("User packet dataloss = (%d, %d). !!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",val_cur,val_exp);
 				}
 				val_exp = val_cur;
+				val_exp = (unsigned char)(val_exp + 1);
 			}//end valid data
 			// user packet dataloss check
 
