@@ -298,7 +298,8 @@ void *ctrl_poll_recv(void *arg)
 			libusb_control_transfer(devh, CTRL_IN, USB_RQ, RADIO_COMM_VAL, RADIO_DATA_RX_IDX, radio_rpacket, sizeof(radio_rpacket), 0);
 			pthread_mutex_unlock(&mux);
 
-			filler_data = ((radio_rpacket[0] == 0xee) && (radio_rpacket[1] == 0xee));
+			filler_data = ((radio_rpacket[0] == 0xee) && (radio_rpacket[1] == 0xee)) &&
+										((radio_rpacket[0] == 0x00) && (radio_rpacket[1] == 0x00));
 			validdataflag = !filler_data && ((radio_rpacket[0] != 0xe5) && (radio_rpacket[1] != 0xe5));
 
 			if (validdataflag) //got valid payload
