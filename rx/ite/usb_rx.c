@@ -282,7 +282,8 @@ void *ctrl_poll_recv(void *arg)
 #endif
 			pthread_mutex_unlock(&mux);
 
-			bool filler_flag = ((radio_rpacket[0]==0xee) && (radio_rpacket[1]==0xee));
+			bool filler_flag = ((radio_rpacket[0]==0xee) && (radio_rpacket[1]==0xee)) ||
+													((radio_rpacket[0]==0x00) && (radio_rpacket[1]==0x00));
 			validdataflag = !filler_flag && ((radio_rpacket[0]!=0xe5) && (radio_rpacket[1]!=0xe5));
 
 			if (validdataflag) {

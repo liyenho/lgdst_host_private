@@ -141,11 +141,11 @@ typedef enum{
 #define RADIO_INFO_LEN  						4 		// gives usb pipe info
 //#define USE_915MHZ
 #ifdef USE_915MHZ
-  #define CTRL_SEND_POLLPERIOD    				24000 	//us:
-  #define CTRL_RECV_POLLPERIOD     				(24000/3) //us:
+  #define CTRL_SEND_POLLPERIOD    				48000 	//us:
+  #define CTRL_RECV_POLLPERIOD     				(48000/3) //us:
 #else  // 869 mhz
-  #define CTRL_SEND_POLLPERIOD    				75000 	//us:
-  #define CTRL_RECV_POLLPERIOD     				(75000/3) //us:
+  #define CTRL_SEND_POLLPERIOD    				150000 	//us:
+  #define CTRL_RECV_POLLPERIOD     				(150000/3) //us:
 #endif
 #define CTRL_SEND_FIFODEPTH  				 	8
 #define CTRL_RECV_FIFODEPTH  				 	8
