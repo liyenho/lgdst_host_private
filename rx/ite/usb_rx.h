@@ -139,8 +139,14 @@ typedef enum{
 #define RADIO_USR_TX_LEN						30 		// ctl/sts radio payload byte length
 #define RADIO_USR_RX_LEN						30 		// ctl/sts radio payload byte length
 #define RADIO_INFO_LEN  						4 		// gives usb pipe info
-#define CTRL_SEND_POLLPERIOD    				24000 	//us: 160000 = 1.5kbps, 30000=8kbps
-#define CTRL_RECV_POLLPERIOD     				(24000/3) //us: must be > 2*CTRL_SEND_POLLPERIOD
+//#define USE_915MHZ
+#ifdef USE_915MHZ
+  #define CTRL_SEND_POLLPERIOD    				24000 	//us:
+  #define CTRL_RECV_POLLPERIOD     				(24000/3) //us:
+#else  // 869 mhz
+  #define CTRL_SEND_POLLPERIOD    				75000 	//us:
+  #define CTRL_RECV_POLLPERIOD     				(75000/3) //us:
+#endif
 #define CTRL_SEND_FIFODEPTH  				 	8
 #define CTRL_RECV_FIFODEPTH  				 	8
 

@@ -165,10 +165,14 @@ typedef enum  {
   #define RADIO_DATA_RX_IDX						0x4
   #define RADIO_USR_TX_LEN						30 // ctl/sts radio payload byte length
   #define RADIO_USR_RX_LEN   					30
-  #define CTRL_SEND_POLLPERIOD    				48000  //us: 160000 = 1.5kbps
-  #define CTRL_RECV_POLLPERIOD    				(24000/4) //us: must be > 2*CTRL_SEND_POLLPERIOD
-  #define CTRL_SEND_MAV_POLLPERIOD				100000
-  #define CTRL_RECV_MAV_POLLPERIOD				100000
+//#define USE_915MHZ
+#ifdef USE_915MHZ
+  #define CTRL_SEND_POLLPERIOD    				48000  //us:
+  #define CTRL_RECV_POLLPERIOD    				(24000/4) //us:
+#else  // 869 mhz
+  #define CTRL_SEND_POLLPERIOD    				150000  //us:
+  #define CTRL_RECV_POLLPERIOD    				(75000/4) //us:
+#endif
   #define RADIO_INFO_LEN  						 4 // for rx statistics
   #define CTRL_SEND_FIFODEPTH  					 8
   #define CTRL_RECV_FIFODEPTH  				     8
