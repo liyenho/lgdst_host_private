@@ -104,7 +104,7 @@ typedef struct {
 #define RADIO_SET_PWR_LVL_LEN							1
 
 //command to enable/disable error correction on sent radio packets
-#define SET_FEC_IDX										0x34
+#define SET_FEC_IDX										0x10
 #define SET_FEC_LEN										sizeof(uint8_t)
 //command to manually set radio channel
 #define RADIO_SET_CHANNEL_IDX							0x35

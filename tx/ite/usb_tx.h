@@ -1,5 +1,5 @@
- #ifndef __USB_RX_H__
-#define __USB_RX_H__
+#ifndef __USB_TX_H__
+#define __USB_TX_H__
 
 #include "rf2072_set.h"
 typedef int bool;
@@ -9,12 +9,21 @@ typedef int bool;
 #define SHMKEY_TX 									1234	 //tx shared memory key for IPC between lgdst/core
 #define SHMKEY_RX 									5678	 //rx shared memory key for IPC between lgdst/core
 #define NON_NIOS
-#define UART_COMM
+#define UART_COMM       //Must always be true. Undefined will not work. (YH170825)
+
 #ifdef UART_COMM
  //#define DBG_UART_REC
  //#define DBG_UART_SND
+//#define USE_MAVLINK
+#ifdef USE_MAVLINK
+ #ifdef MAVLINK_V1  //defined in makefile
 	#define MAVLINK_START_SIGN		0x55
 	#define MAVLINK_HDR_LEN				6
+ #else              //enabled if MAVLINK_V2 defined in makefile
+	#define MAVLINK_START_SIGN		0xFD
+	#define MAVLINK_HDR_LEN				10
+ #endif
+#endif
 	#define START_SIGN_LEN				1  // one byte
 	#define CHKSUM_LEN							2  // two bytes
 	#define X25_INIT_CRC 							0xffff
@@ -163,12 +172,17 @@ typedef enum  {
   #define RADIO_STARTUP_IDX						0x2
   #define RADIO_DATA_TX_IDX 					0x3
   #define RADIO_DATA_RX_IDX						0x4
+#if  FEC_ON  // turn on/off in makefile
+  #define RADIO_USR_TX_LEN						23 // ctl/sts radio payload byte length
+  #define RADIO_USR_RX_LEN   					23
+#else
   #define RADIO_USR_TX_LEN						30 // ctl/sts radio payload byte length
   #define RADIO_USR_RX_LEN   					30
-//#define USE_915MHZ
+#endif
+#define USE_915MHZ
 #ifdef USE_915MHZ
   #define CTRL_SEND_POLLPERIOD    				48000  //us:
-  #define CTRL_RECV_POLLPERIOD    				(24000/4) //us:
+  #define CTRL_RECV_POLLPERIOD    				(24000/2) //us:
 #else  // 869 mhz
   #define CTRL_SEND_POLLPERIOD    				150000  //us:
   #define CTRL_RECV_POLLPERIOD    				(75000/4) //us:

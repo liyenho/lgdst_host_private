@@ -13,8 +13,13 @@
 #define UDPOUT_ADDR 							"127.0.0.1"
 #define UDPOUT_PORT  							5558
 #define FRAME_SIZE_A							(188*10)
-#define RADIO_USR_TX_LEN						30 // ctl/sts radio payload byte length
-#define RADIO_USR_RX_LEN						30 // ctl/sts radio payload byte length
+#if  FEC_ON  // turn on/off in makefile
+  #define RADIO_USR_TX_LEN      23 // ctl/sts radio payload byte length
+  #define RADIO_USR_RX_LEN      23
+#else
+  #define RADIO_USR_TX_LEN      30 // ctl/sts radio payload byte length
+  #define RADIO_USR_RX_LEN      30
+#endif
 #define RADIO_INFO_LEN  						4 // gives usb pipe info
 #ifdef VIDEO_STATS
  #include <avformat.h>
@@ -331,7 +336,7 @@ failed:
 	}
 
  static void *ctrl_send_rx(void *arg) {
-		uint8_t *pb, tpacket[/*RADIO_USR_TX_LEN*/1000] ;
+		uint8_t *pb, tpacket[1000] ;
 		int n, nn= 0;
 		while (1 != do_exit_m) {
 #if false  // one can enable if he wants to exam the ctrl data link
@@ -350,7 +355,7 @@ failed:
 	}
 
 static void *ctrl_recv_rx(void *arg) {
-		uint8_t *pb, rpacket[/*RADIO_USR_RX_LEN+RADIO_INFO_LEN*/1000] ;
+		uint8_t *pb, rpacket[1000] ;
 		int n, nn;
 		while (1 != do_exit_m) {
 			lgdst_ctl_rec_rx(rpacket);

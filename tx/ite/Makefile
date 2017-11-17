@@ -2,7 +2,7 @@
 CC=gcc
 
 #C flag definitions
-CFLAGS 	  = -O3  -std=gnu99  -I/usr/include/ -I/usr/local/include/libusb-1.0 #-D_ONE_USB_
+CFLAGS 	  = -O3 -DMAVLINK_V2 -DFEC_ON=1 -std=gnu99  -I/usr/include/ -I/usr/local/include/libusb-1.0 #-D_ONE_USB_
 LDFLAGS		= -L/usr/local/lib -L/usr/lib -lusb-1.0 -lpthread -lrt -lm
 # makefile changes necessary to generate .so file
 

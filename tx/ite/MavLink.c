@@ -3,6 +3,7 @@
 * MavLink.c
 *
 */
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
@@ -57,9 +58,18 @@ uint32_t Compute_Mavlink_Checksum(MavLinkPacket *packet){
 		crc_accumulate(*(uint8_t *)((&packet->length)+i), &checksum);
 	}
 	//add CRC Extra per MavLink definition
+#ifdef MAVLINK_V1
 	int msg_id = (sizeof(MAVLINK_MESSAGE_CRCS)<=packet->message_ID)?0:packet->message_ID;
 	crc_accumulate(MAVLINK_MESSAGE_CRCS[msg_id/*protect against msg corruption*/], &checksum);
-
+#elif defined(MAVLINK_V2)
+	int msg_id = 0;
+	uint8_t *p_id = &msg_id, *p_msg_id= packet->message_ID;
+	*p_id++ = *p_msg_id++;
+	*p_id++ = *p_msg_id++;
+	*p_id = *p_msg_id;
+	if (sizeof(MAVLINK_MESSAGE_CRCS)<=msg_id) msg_id=0;
+	crc_accumulate(MAVLINK_MESSAGE_CRCS[msg_id/*protect against msg corruption*/], &checksum);
+#endif
 	return checksum;
 }
 
@@ -71,10 +81,14 @@ void Build_Mavlink_Data_Packet(uint8_t *pkt0, uint8_t num_bytes, uint8_t *data)
 	MavLinkPacket *pkt = (MavLinkPacket*)pkt0; // revised as below,
 	pkt->header = MAVLINK_START_SIGN;
 	pkt->length = num_bytes;
+#ifdef MAVLINK_V2
+	memset(pkt->comp_flags,
+					0x0, sizeof(pkt->comp_flags));
+#endif
 	pkt->sequence = sequence_cnt++;
 	pkt->system_ID = 0xAB; //made up values for testing
 	pkt->component_ID = 0xCD; //made up values for testing
-	pkt->message_ID = MAVLINK_ID_DATA;
+	memset(&pkt->message_ID, MAVLINK_ID_DATA, sizeof(pkt->message_ID));
 	memcpy(pkt->data, data, num_bytes); //fill in packet payload
 
 	uint16_t chksm = Compute_Mavlink_Checksum(pkt);

@@ -1726,7 +1726,7 @@ int udpout_init(char* udpaddr)
 	do { \
 		error=it9517_func_call ; \
 		if (5<=err_cnt++) \
-			{error=err_val; goto exit;} \
+			{error=err_val; goto _exit;} \
 	} while(error );
 
 #ifdef LIB

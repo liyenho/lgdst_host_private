@@ -30,7 +30,7 @@ typedef int bool;
 #define UDP_PACKET_MAX 							1880
 #define UDPOUT_PORT         					5558
 
-//#define VIDEO_DUAL_BUFFER		// accommodate dual stream protection scheme
+#define VIDEO_DUAL_BUFFER		// accommodate dual stream protection scheme
 #ifdef VIDEO_DUAL_BUFFER
 	  /*376*8/(1500*10^-6) approximate 2 mb/s,
   	to be 1333.333 ts pkts, take 251920=1340*188 to accommodate 1880 blk */
@@ -50,6 +50,7 @@ typedef int bool;
 				ext_seq_cnt_n;
  	} ctx_dual_stream;
 #endif
+
 #define FRAME_SIZE_A							1880
 #define FRAME_SIZE_V							307200
 #define FRAME_SIZE_V2							(FRAME_SIZE_V*2)
@@ -125,8 +126,12 @@ typedef enum{
 
 #ifdef  RADIO_SI4463
 
-#define MAVLINK_USB_LEN							263//(30+6+2)
 #define USE_MAVLINK								/*0*/ 1
+#ifdef MAVLINK_V1
+ #define MAVLINK_USB_LEN							263
+#else
+ #define MAVLINK_USB_LEN							267
+#endif
 
 #define RADIO_COMM_VAL							0x10    // using 5 bit out of 16 bit should be alright?
 #define RADIO_STARTUP_IDX						0x2
@@ -136,13 +141,18 @@ typedef enum{
 #endif
 #define RADIO_DATA_TX_IDX 						0x3
 #define RADIO_DATA_RX_IDX						0x4
-#define RADIO_USR_TX_LEN						30 		// ctl/sts radio payload byte length
-#define RADIO_USR_RX_LEN						30 		// ctl/sts radio payload byte length
+#if  FEC_ON  // turn on/off in makefile
+  #define RADIO_USR_TX_LEN						23 		// ctl/sts radio payload byte length
+  #define RADIO_USR_RX_LEN						23
+#else
+  #define RADIO_USR_TX_LEN						30 		// ctl/sts radio payload byte length
+  #define RADIO_USR_RX_LEN						30
+#endif
 #define RADIO_INFO_LEN  						4 		// gives usb pipe info
-//#define USE_915MHZ
+#define USE_915MHZ
 #ifdef USE_915MHZ
-  #define CTRL_SEND_POLLPERIOD    				48000 	//us:
-  #define CTRL_RECV_POLLPERIOD     				(48000/3) //us:
+  #define CTRL_SEND_POLLPERIOD    				24000 	//us:
+  #define CTRL_RECV_POLLPERIOD     				(48000/2) //us:
 #else  // 869 mhz
   #define CTRL_SEND_POLLPERIOD    				150000 	//us:
   #define CTRL_RECV_POLLPERIOD     				(150000/3) //us:
@@ -182,7 +192,6 @@ int short_sleep(double sleep_time);
 void sigint_handler(int signum);
 bool open_ini(int *setting_rec);
 bool update_ini(int *setting_rec);
-uint32_t TEI_exam_pkt_ts(uint32_t size, uint8_t *tsbuf, uint8_t *retbuf);
 void rffe_write_regs(dev_cfg* pregs, int size);
 int cpld_firmware_update(int mode, const char*file_name);
 #if (/*1*/0)
