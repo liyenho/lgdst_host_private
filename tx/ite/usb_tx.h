@@ -9,13 +9,12 @@ typedef int bool;
 #define SHMKEY_TX 									1234	 //tx shared memory key for IPC between lgdst/core
 #define SHMKEY_RX 									5678	 //rx shared memory key for IPC between lgdst/core
 #define NON_NIOS
-#define UART_COMM       //Must always be true. Undefined will not work. (YH170825)
+//#define UART_COMM       // this macro also control mavlink option to be on/off as well
 
 #ifdef UART_COMM
  //#define DBG_UART_REC
  //#define DBG_UART_SND
-//#define USE_MAVLINK
-#ifdef USE_MAVLINK
+#ifdef UART_COMM
  #ifdef MAVLINK_V1  //defined in makefile
 	#define MAVLINK_START_SIGN		0x55
 	#define MAVLINK_HDR_LEN				6
