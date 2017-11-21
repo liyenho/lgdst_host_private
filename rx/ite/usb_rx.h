@@ -126,7 +126,7 @@ typedef enum{
 
 #ifdef  RADIO_SI4463
 
-#define USE_MAVLINK								/*0*/ 1
+#define USE_MAVLINK								0 /*1*/
 #ifdef MAVLINK_V1
  #define MAVLINK_USB_LEN							263
 #else
